@@ -57,7 +57,7 @@ mod tests {
             .map(|x| 1.0 + (x as f32) * 0.01)
             .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
             .collect();
-        let res = utils::residual(ys, ys_ref);
+        let res = utils::residual(&ys, &ys_ref);
         assert!(res <= 0.01);
     }
 
@@ -75,7 +75,7 @@ mod tests {
             .map(|x| 1.0 + (x as f64) * 0.01)
             .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
             .collect();
-        let res = utils::residual(ys, ys_ref);
+        let res = utils::residual(&ys, &ys_ref);
         assert!(res <= 0.01);
     }
 }
