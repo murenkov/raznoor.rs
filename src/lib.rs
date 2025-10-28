@@ -3,19 +3,17 @@ use num_traits::Float;
 #[macro_use]
 pub mod utils;
 
-fn euler<T, F>(f: F, xs: Vec<T>, y_0: T) -> Vec<T>
+fn euler<T, F>(ys: &mut [T], f: F, xs: &[T], y_0: T)
 where
     T: Float,
     F: Fn(T, T) -> T,
 {
-    let mut ys = vec![T::zero(); xs.len()];
     ys[0] = y_0;
 
     for (k, x) in xs.windows(2).enumerate() {
         let h = x[1] - x[0];
         ys[k + 1] = ys[k] + h * f(x[0], ys[k]);
     }
-    ys
 }
 
 pub struct ODEProblem<T: Float> {
@@ -34,9 +32,11 @@ pub fn solve<T: Float>(prob: ODEProblem<T>, alg: DEAlgorithm, dt: T) -> Vec<T> {
         .take_while(|&x| x < prob.tspan.1)
         .collect();
 
+    let mut ys = vec![T::zero(); xs.len()];
     match alg {
-        DEAlgorithm::Euler => euler(prob.f, xs, prob.u0),
+        DEAlgorithm::Euler => euler(&mut ys, prob.f, &xs, prob.u0),
     }
+    ys
 }
 
 #[cfg(test)]
