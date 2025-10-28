@@ -1,11 +1,14 @@
+use num_traits::Float;
+
 #[macro_use]
 pub mod utils;
 
-fn euler<F>(f: F, xs: Vec<f32>, y_0: f32) -> Vec<f32>
+fn euler<T, F>(f: F, xs: Vec<T>, y_0: T) -> Vec<T>
 where
-    F: Fn(f32, f32) -> f32,
+    T: Float,
+    F: Fn(T, T) -> T,
 {
-    let mut ys = vec![Default::default(); xs.len()];
+    let mut ys = vec![T::zero(); xs.len()];
     ys[0] = y_0;
 
     for (k, x) in xs[..xs.len() - 1].iter().enumerate() {
@@ -15,10 +18,10 @@ where
     ys
 }
 
-pub struct ODEProblem {
-    f: Box<dyn Fn(f32, f32) -> f32>,
-    u0: f32,
-    tspan: (f32, f32),
+pub struct ODEProblem<T: Float> {
+    f: Box<dyn Fn(T, T) -> T>,
+    u0: T,
+    tspan: (T, T),
 }
 
 #[derive(Debug)]
@@ -26,10 +29,10 @@ pub enum DEAlgorithm {
     Euler,
 }
 
-pub fn solve(prob: ODEProblem, alg: DEAlgorithm, dt: f32) -> Vec<f32> {
-    let len = ((prob.tspan.1 - prob.tspan.0) / dt) as usize;
-
-    let xs: Vec<f32> = (0..len).map(|k| prob.tspan.0 + (k as f32) * dt).collect();
+pub fn solve<T: Float>(prob: ODEProblem<T>, alg: DEAlgorithm, dt: T) -> Vec<T> {
+    let xs: Vec<T> = std::iter::successors(Some(prob.tspan.0), |&x| Some(x + dt))
+        .take_while(|&x| x < prob.tspan.1)
+        .collect();
 
     match alg {
         DEAlgorithm::Euler => euler(prob.f, xs, prob.u0),
@@ -41,7 +44,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn euler() {
+    fn euler_f32() {
         let fun = |x: f32, y: f32| -> f32 { 2.0 * x + y };
         let prob = ODEProblem {
             f: Box::new(fun),
@@ -52,6 +55,24 @@ mod tests {
         let ys = solve(prob, DEAlgorithm::Euler, 0.01);
         let ys_ref: Vec<f32> = (0..10)
             .map(|x| 1.0 + (x as f32) * 0.01)
+            .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
+            .collect();
+        let res = utils::residual(ys, ys_ref);
+        assert!(res <= 0.01);
+    }
+
+    #[test]
+    fn euler_f64() {
+        let fun = |x: f64, y: f64| -> f64 { 2.0 * x + y };
+        let prob = ODEProblem {
+            f: Box::new(fun),
+            u0: 1.0,
+            tspan: (1.0, 1.1),
+        };
+
+        let ys = solve(prob, DEAlgorithm::Euler, 0.01);
+        let ys_ref: Vec<f64> = (0..10)
+            .map(|x| 1.0 + (x as f64) * 0.01)
             .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
             .collect();
         let res = utils::residual(ys, ys_ref);
