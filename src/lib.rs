@@ -11,9 +11,9 @@ where
     let mut ys = vec![T::zero(); xs.len()];
     ys[0] = y_0;
 
-    for (k, x) in xs[..xs.len() - 1].iter().enumerate() {
-        let h = xs[k + 1] - xs[k];
-        ys[k + 1] = ys[k] + h * f(*x, ys[k]);
+    for (k, x) in xs.windows(2).enumerate() {
+        let h = x[1] - x[0];
+        ys[k + 1] = ys[k] + h * f(x[0], ys[k]);
     }
     ys
 }
