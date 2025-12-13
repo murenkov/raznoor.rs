@@ -5,6 +5,11 @@ use strum_macros::EnumIter;
 #[macro_use]
 pub mod utils;
 
+pub struct ODESolution<T> {
+    pub t: Box<[T]>,
+    pub u: Box<[Box<[T]>]>,
+}
+
 fn euler<T, F>(ys: &mut [T], f: F, xs: &[T], y_0: T)
 where
     T: Float,
@@ -49,11 +54,11 @@ pub enum DEAlgorithm {
     RungeKutta,
 }
 
-pub fn solve<T>(prob: &ODEProblem<T>, alg: DEAlgorithm, dt: T) -> Vec<T>
+pub fn solve<T>(prob: &ODEProblem<T>, alg: DEAlgorithm, dt: T) -> ODESolution<T>
 where
     T: Float + num_traits::FromPrimitive,
 {
-    let xs: Vec<T> = std::iter::successors(Some(prob.tspan.0), |&x| Some(x + dt))
+    let xs: Box<[T]> = std::iter::successors(Some(prob.tspan.0), |&x| Some(x + dt))
         .take_while(|&x| x < prob.tspan.1)
         .collect();
 
@@ -62,7 +67,9 @@ where
         DEAlgorithm::Euler => euler(&mut ys, &prob.f, &xs, prob.u0),
         DEAlgorithm::RungeKutta => runge_kutta(&mut ys, &prob.f, &xs, prob.u0),
     }
-    ys
+    let us: Box<[Box<[T]>]> = Box::new([ys.into()]);
+
+    ODESolution::<T> { t: xs, u: us }
 }
 
 #[cfg(test)]
@@ -85,7 +92,7 @@ mod tests {
                 .map(|x| 1.0 + (x as f32) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
                 .collect();
-            let res = utils::residual(&ys, &ys_ref);
+            let res = utils::residual(&ys.u[0], &ys_ref);
             assert!(res <= 0.01);
         }
     }
@@ -105,7 +112,7 @@ mod tests {
                 .map(|x| 1.0 + (x as f64) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
                 .collect();
-            let res = utils::residual(&ys, &ys_ref);
+            let res = utils::residual(&ys.u[0], &ys_ref);
             assert!(res <= 0.01);
         }
     }
