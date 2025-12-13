@@ -48,7 +48,7 @@ pub enum DEAlgorithm {
     RungeKutta,
 }
 
-pub fn solve<T>(prob: ODEProblem<T>, alg: DEAlgorithm, dt: T) -> Vec<T>
+pub fn solve<T>(prob: &ODEProblem<T>, alg: DEAlgorithm, dt: T) -> Vec<T>
 where
     T: Float + num_traits::FromPrimitive,
 {
@@ -58,8 +58,8 @@ where
 
     let mut ys = vec![T::zero(); xs.len()];
     match alg {
-        DEAlgorithm::Euler => euler(&mut ys, prob.f, &xs, prob.u0),
-        DEAlgorithm::RungeKutta => runge_kutta(&mut ys, prob.f, &xs, prob.u0),
+        DEAlgorithm::Euler => euler(&mut ys, &prob.f, &xs, prob.u0),
+        DEAlgorithm::RungeKutta => runge_kutta(&mut ys, &prob.f, &xs, prob.u0),
     }
     ys
 }
@@ -77,7 +77,7 @@ mod tests {
             tspan: (1.0, 1.1),
         };
 
-        let ys = solve(prob, DEAlgorithm::Euler, 0.01);
+        let ys = solve(&prob, DEAlgorithm::Euler, 0.01);
         let ys_ref: Vec<f32> = (0..10)
             .map(|x| 1.0 + (x as f32) * 0.01)
             .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
@@ -95,7 +95,7 @@ mod tests {
             tspan: (1.0, 1.1),
         };
 
-        let ys = solve(prob, DEAlgorithm::Euler, 0.01);
+        let ys = solve(&prob, DEAlgorithm::Euler, 0.01);
         let ys_ref: Vec<f64> = (0..10)
             .map(|x| 1.0 + (x as f64) * 0.01)
             .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
@@ -113,7 +113,7 @@ mod tests {
             tspan: (1.0, 1.1),
         };
 
-        let ys = solve(prob, DEAlgorithm::RungeKutta, 0.01);
+        let ys = solve(&prob, DEAlgorithm::RungeKutta, 0.01);
         let ys_ref: Vec<f32> = (0..10)
             .map(|x| 1.0 + (x as f32) * 0.01)
             .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
@@ -131,7 +131,7 @@ mod tests {
             tspan: (1.0, 1.1),
         };
 
-        let ys = solve(prob, DEAlgorithm::RungeKutta, 0.01);
+        let ys = solve(&prob, DEAlgorithm::RungeKutta, 0.01);
         let ys_ref: Vec<f64> = (0..10)
             .map(|x| 1.0 + (x as f64) * 0.01)
             .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
