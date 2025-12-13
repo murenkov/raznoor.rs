@@ -1,5 +1,6 @@
 use num_traits::Float;
 use num_traits::FromPrimitive;
+use strum_macros::EnumIter;
 
 #[macro_use]
 pub mod utils;
@@ -42,7 +43,7 @@ pub struct ODEProblem<T: Float> {
     tspan: (T, T),
 }
 
-#[derive(Debug)]
+#[derive(Debug, EnumIter)]
 pub enum DEAlgorithm {
     Euler,
     RungeKutta,
@@ -67,9 +68,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use strum::IntoEnumIterator;
 
     #[test]
-    fn euler_f32() {
+    fn solve_f32() {
         let fun = |x: f32, y: f32| -> f32 { 2.0 * x + y };
         let prob = ODEProblem {
             f: Box::new(fun),
@@ -77,17 +79,19 @@ mod tests {
             tspan: (1.0, 1.1),
         };
 
-        let ys = solve(&prob, DEAlgorithm::Euler, 0.01);
-        let ys_ref: Vec<f32> = (0..10)
-            .map(|x| 1.0 + (x as f32) * 0.01)
-            .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
-            .collect();
-        let res = utils::residual(&ys, &ys_ref);
-        assert!(res <= 0.01);
+        for alg in DEAlgorithm::iter() {
+            let ys = solve(&prob, alg, 0.01);
+            let ys_ref: Vec<f32> = (0..10)
+                .map(|x| 1.0 + (x as f32) * 0.01)
+                .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
+                .collect();
+            let res = utils::residual(&ys, &ys_ref);
+            assert!(res <= 0.01);
+        }
     }
 
     #[test]
-    fn euler_f64() {
+    fn solve_f64() {
         let fun = |x: f64, y: f64| -> f64 { 2.0 * x + y };
         let prob = ODEProblem {
             f: Box::new(fun),
@@ -95,48 +99,14 @@ mod tests {
             tspan: (1.0, 1.1),
         };
 
-        let ys = solve(&prob, DEAlgorithm::Euler, 0.01);
-        let ys_ref: Vec<f64> = (0..10)
-            .map(|x| 1.0 + (x as f64) * 0.01)
-            .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
-            .collect();
-        let res = utils::residual(&ys, &ys_ref);
-        assert!(res <= 0.01);
-    }
-
-    #[test]
-    fn runge_kutta_f32() {
-        let fun = |x: f32, y: f32| -> f32 { 2.0 * x + y };
-        let prob = ODEProblem {
-            f: Box::new(fun),
-            u0: 1.0,
-            tspan: (1.0, 1.1),
-        };
-
-        let ys = solve(&prob, DEAlgorithm::RungeKutta, 0.01);
-        let ys_ref: Vec<f32> = (0..10)
-            .map(|x| 1.0 + (x as f32) * 0.01)
-            .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
-            .collect();
-        let res = utils::residual(&ys, &ys_ref);
-        assert!(res <= 0.01);
-    }
-
-    #[test]
-    fn runge_kutta_f64() {
-        let fun = |x: f64, y: f64| -> f64 { 2.0 * x + y };
-        let prob = ODEProblem {
-            f: Box::new(fun),
-            u0: 1.0,
-            tspan: (1.0, 1.1),
-        };
-
-        let ys = solve(&prob, DEAlgorithm::RungeKutta, 0.01);
-        let ys_ref: Vec<f64> = (0..10)
-            .map(|x| 1.0 + (x as f64) * 0.01)
-            .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
-            .collect();
-        let res = utils::residual(&ys, &ys_ref);
-        assert!(res <= 0.01);
+        for alg in DEAlgorithm::iter() {
+            let ys = solve(&prob, alg, 0.01);
+            let ys_ref: Vec<f64> = (0..10)
+                .map(|x| 1.0 + (x as f64) * 0.01)
+                .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
+                .collect();
+            let res = utils::residual(&ys, &ys_ref);
+            assert!(res <= 0.01);
+        }
     }
 }
