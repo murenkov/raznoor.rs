@@ -1,3 +1,5 @@
+use ndarray::{ArrayBase, OwnedRepr};
+use ndarray::{arr1, arr2};
 use num_traits::Float;
 use num_traits::FromPrimitive;
 use strum_macros::EnumIter;
@@ -10,35 +12,81 @@ pub struct ODESolution<T> {
     pub u: Box<[Box<[T]>]>,
 }
 
-fn euler<T, F>(ys: &mut [T], f: F, xs: &[T], y_0: T)
-where
-    T: Float,
-    F: Fn(T, T) -> T,
-{
-    ys[0] = y_0;
+type Vector<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 1]>, T>;
+type Matrix<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 2]>, T>;
 
-    for (k, x) in xs.windows(2).enumerate() {
-        let h = x[1] - x[0];
-        ys[k + 1] = ys[k] + h * f(x[0], ys[k]);
+#[derive(Debug)]
+struct ButcherTableu<T: Float> {
+    a: Matrix<T>,
+    b: Vector<T>,
+    c: Vector<T>,
+}
+
+fn butcher_table<T>(size: usize) -> ButcherTableu<T>
+where
+    T: Float + num_traits::FromPrimitive,
+{
+    let cast = |x: f64| -> T { FromPrimitive::from_f64(x).unwrap() };
+
+    match size {
+        1_usize => ButcherTableu {
+            a: arr2(&[[0.0]]).map(|x: &f64| cast(*x)),
+            b: arr1(&[1.0]).map(|x: &f64| cast(*x)),
+            c: arr1(&[0.0]).map(|x: &f64| cast(*x)),
+        },
+        2_usize => ButcherTableu {
+            a: arr2(&[[0.0, 0.0], [1.0, 0.0]]).map(|x: &f64| cast(*x)),
+            b: arr1(&[0.5, 0.5]).map(|x: &f64| cast(*x)),
+            c: arr1(&[0.0, 1.0]).map(|x: &f64| cast(*x)),
+        },
+        4_usize => ButcherTableu {
+            a: arr2(&[
+                [0.0, 0.0, 0.0, 0.0],
+                [0.5, 0.0, 0.0, 0.0],
+                [0.0, 0.5, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+            ])
+            .map(|x: &f64| cast(*x)),
+            b: arr1(&[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0]).map(|x: &f64| cast(*x)),
+            c: arr1(&[0.0, 0.5, 0.5, 1.0]).map(|x: &f64| cast(*x)),
+        },
+        _ => unimplemented!(),
     }
 }
 
-fn runge_kutta<T, F>(ys: &mut [T], f: F, xs: &[T], y_0: T)
+fn stages_coefficents<T, F>(ks: &mut [T], bt: &ButcherTableu<T>, f: F, x: T, y: T, h: T)
+where
+    T: Float + num_traits::FromPrimitive,
+    F: Fn(T, T) -> T,
+{
+    for m in 0..ks.len() {
+        let mut sum = T::zero();
+        for (i, &k) in ks.iter().enumerate() {
+            sum = sum + bt.a[[m, i]] * k;
+        }
+        ks[m] = f(x + bt.c[m] * h, y + h * sum);
+    }
+}
+
+fn runge_kutta_n<T, F>(ys: &mut [T], f: F, xs: &[T], y_0: T, stages: usize)
 where
     T: Float + num_traits::FromPrimitive,
     F: Fn(T, T) -> T,
 {
     ys[0] = y_0;
 
-    let cast = |x: f64| -> T { FromPrimitive::from_f64(x).unwrap() };
-    let c: T = cast(6.0).recip();
-    for (k, x) in xs.windows(2).enumerate() {
+    let bt = butcher_table::<T>(stages);
+    let mut ks: Vec<T> = vec![T::zero(); stages];
+    for (i, x) in xs.windows(2).enumerate() {
         let h = x[1] - x[0];
-        let k_1 = f(x[0], ys[k]);
-        let k_2 = f(x[0] + cast(0.5) * h, ys[k] + cast(0.5) * h * k_1);
-        let k_3 = f(x[0] + cast(0.5) * h, ys[k] + cast(0.5) * h * k_2);
-        let k_4 = f(x[0] + h, ys[k] + h * k_3);
-        ys[k + 1] = ys[k] + c * h * (k_1 + cast(2.0) * k_2 + cast(2.0) * k_3 + k_4);
+        stages_coefficents(&mut ks, &bt, &f, x[0], ys[i], h);
+
+        let mut s = T::zero();
+        for (m, &k) in ks.iter().enumerate() {
+            s = s + bt.b[m] * k;
+        }
+
+        ys[i + 1] = ys[i] + s * h;
     }
 }
 
@@ -50,8 +98,9 @@ pub struct ODEProblem<T: Float> {
 
 #[derive(Debug, EnumIter)]
 pub enum DEAlgorithm {
-    Euler,
-    RungeKutta,
+    ExplicitRungeKutta1,
+    ExplicitRungeKutta2,
+    ExplicitRungeKutta4,
 }
 
 pub fn solve<T>(prob: &ODEProblem<T>, alg: DEAlgorithm, dt: T) -> ODESolution<T>
@@ -64,8 +113,9 @@ where
 
     let mut ys = vec![T::zero(); xs.len()];
     match alg {
-        DEAlgorithm::Euler => euler(&mut ys, &prob.f, &xs, prob.u0),
-        DEAlgorithm::RungeKutta => runge_kutta(&mut ys, &prob.f, &xs, prob.u0),
+        DEAlgorithm::ExplicitRungeKutta1 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 1),
+        DEAlgorithm::ExplicitRungeKutta2 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 2),
+        DEAlgorithm::ExplicitRungeKutta4 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 4),
     }
     let us: Box<[Box<[T]>]> = Box::new([ys.into()]);
 
