@@ -108,7 +108,7 @@ where
     T: Float + num_traits::FromPrimitive,
 {
     let xs: Box<[T]> = std::iter::successors(Some(prob.tspan.0), |&x| Some(x + dt))
-        .take_while(|&x| x < prob.tspan.1)
+        .take_while(|&x| x <= prob.tspan.1)
         .collect();
 
     let mut ys = vec![T::zero(); xs.len()];
@@ -138,11 +138,11 @@ mod tests {
 
         for alg in DEAlgorithm::iter() {
             let ys = solve(&prob, alg, 0.01);
-            let ys_ref: Vec<f32> = (0..10)
+            let ys_ref: Vec<f32> = (0..11)
                 .map(|x| 1.0 + (x as f32) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
                 .collect();
-            let res = utils::residual(&ys.u[0], &ys_ref);
+            let res = utils::residual(&ys.u[0], &ys_ref).unwrap();
             assert!(res <= 0.01);
         }
     }
@@ -158,11 +158,11 @@ mod tests {
 
         for alg in DEAlgorithm::iter() {
             let ys = solve(&prob, alg, 0.01);
-            let ys_ref: Vec<f64> = (0..10)
+            let ys_ref: Vec<f64> = (0..11)
                 .map(|x| 1.0 + (x as f64) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
                 .collect();
-            let res = utils::residual(&ys.u[0], &ys_ref);
+            let res = utils::residual(&ys.u[0], &ys_ref).unwrap();
             assert!(res <= 0.01);
         }
     }

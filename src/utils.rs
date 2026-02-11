@@ -1,6 +1,10 @@
 use num_traits::Float;
 
-pub fn residual<T: Float>(xs: &[T], ys: &[T]) -> T {
+pub fn residual<T: Float>(xs: &[T], ys: &[T]) -> Result<T, &'static str> {
+    if xs.len() != ys.len() {
+        return Err("arrays should have equal length");
+    }
+
     let diffs = std::iter::zip(xs, ys).map(|(&x, &y)| (x - y).abs());
     let mut max = T::min_value();
     for diff in diffs {
@@ -8,5 +12,5 @@ pub fn residual<T: Float>(xs: &[T], ys: &[T]) -> T {
             max = diff;
         }
     }
-    max
+    Ok(max)
 }
