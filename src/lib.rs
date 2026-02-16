@@ -22,31 +22,46 @@ struct ButcherTableu<T: Float> {
     c: Vector<T>,
 }
 
+fn runge_kutta_matrix<T>(size: usize) -> Matrix<T>
+where
+    T: Float + num_traits::FromPrimitive,
+{
+    let cast = |x: f64| -> T { FromPrimitive::from_f64(x).unwrap() };
+
+    let a = match size {
+        1_usize => arr2(&[[0.0]]),
+        2_usize => arr2(&[[0.0, 0.0], [1.0, 0.0]]),
+        4_usize => arr2(&[
+            [0.0, 0.0, 0.0, 0.0],
+            [0.5, 0.0, 0.0, 0.0],
+            [0.0, 0.5, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+        ]),
+        _ => unimplemented!(),
+    };
+    a.map(|x: &f64| cast(*x))
+}
+
 fn butcher_table<T>(size: usize) -> ButcherTableu<T>
 where
     T: Float + num_traits::FromPrimitive,
 {
     let cast = |x: f64| -> T { FromPrimitive::from_f64(x).unwrap() };
 
+    let a = runge_kutta_matrix::<T>(size);
     match size {
         1_usize => ButcherTableu {
-            a: arr2(&[[0.0]]).map(|x: &f64| cast(*x)),
+            a: a,
             b: arr1(&[1.0]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0]).map(|x: &f64| cast(*x)),
         },
         2_usize => ButcherTableu {
-            a: arr2(&[[0.0, 0.0], [1.0, 0.0]]).map(|x: &f64| cast(*x)),
+            a: a,
             b: arr1(&[0.5, 0.5]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0, 1.0]).map(|x: &f64| cast(*x)),
         },
         4_usize => ButcherTableu {
-            a: arr2(&[
-                [0.0, 0.0, 0.0, 0.0],
-                [0.5, 0.0, 0.0, 0.0],
-                [0.0, 0.5, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-            ])
-            .map(|x: &f64| cast(*x)),
+            a: a,
             b: arr1(&[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0, 0.5, 0.5, 1.0]).map(|x: &f64| cast(*x)),
         },
