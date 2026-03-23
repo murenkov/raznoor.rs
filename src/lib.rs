@@ -51,17 +51,17 @@ where
     let a = runge_kutta_matrix::<T>(size);
     match size {
         1_usize => ButcherTableu {
-            a: a,
+            a,
             b: arr1(&[1.0]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0]).map(|x: &f64| cast(*x)),
         },
         2_usize => ButcherTableu {
-            a: a,
+            a,
             b: arr1(&[0.5, 0.5]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0, 1.0]).map(|x: &f64| cast(*x)),
         },
         4_usize => ButcherTableu {
-            a: a,
+            a,
             b: arr1(&[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0, 0.5, 0.5, 1.0]).map(|x: &f64| cast(*x)),
         },
