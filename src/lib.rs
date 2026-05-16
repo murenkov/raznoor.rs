@@ -11,8 +11,8 @@ pub struct ODESolution<T> {
     pub u: Box<[Box<[T]>]>,
 }
 
-type Vector<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 1]>, T>;
-type Matrix<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 2]>, T>;
+type Vector<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 1]>>;
+type Matrix<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 2]>>;
 
 #[derive(Debug)]
 struct ButcherTableu<T: Float> {
