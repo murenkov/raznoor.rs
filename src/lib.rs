@@ -2,6 +2,7 @@ use ndarray::{ArrayBase, OwnedRepr};
 use ndarray::{arr1, arr2};
 use num_traits::Float;
 use num_traits::FromPrimitive;
+use num_traits::ToPrimitive;
 use strum_macros::EnumIter;
 
 pub mod utils;
@@ -121,9 +122,17 @@ pub fn solve<T>(prob: &ODEProblem<T>, alg: DEAlgorithm, dt: T) -> ODESolution<T>
 where
     T: Float + num_traits::FromPrimitive,
 {
-    let xs: Box<[T]> = std::iter::successors(Some(prob.tspan.0), |&x| Some(x + dt))
-        .take_while(|&x| x <= prob.tspan.1)
-        .collect();
+    let n_steps = ((prob.tspan.1 - prob.tspan.0) / dt)
+        .floor()
+        .to_usize()
+        .unwrap_or(0);
+    let mut xs: Vec<T> = Vec::with_capacity(n_steps + 2);
+    xs.push(prob.tspan.0);
+    for i in 1..n_steps {
+        xs.push(prob.tspan.0 + dt * T::from_usize(i).unwrap());
+    }
+    xs.push(prob.tspan.1);
+    let xs: Box<[T]> = xs.into();
 
     let mut ys = vec![T::zero(); xs.len()];
     match alg {
