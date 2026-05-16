@@ -105,8 +105,8 @@ where
     }
 }
 
-pub struct ODEProblem<T: Float> {
-    pub f: Box<dyn Fn(T, T) -> T>,
+pub struct ODEProblem<T: Float, F: Fn(T, T) -> T> {
+    pub f: F,
     pub u0: T,
     pub tspan: (T, T),
 }
@@ -118,9 +118,10 @@ pub enum DEAlgorithm {
     ExplicitRungeKutta4,
 }
 
-pub fn solve<T>(prob: &ODEProblem<T>, alg: DEAlgorithm, dt: T) -> ODESolution<T>
+pub fn solve<T, F>(prob: &ODEProblem<T, F>, alg: DEAlgorithm, dt: T) -> ODESolution<T>
 where
     T: Float + num_traits::FromPrimitive,
+    F: Fn(T, T) -> T,
 {
     let n_steps = ((prob.tspan.1 - prob.tspan.0) / dt)
         .floor()
@@ -154,7 +155,7 @@ mod tests {
     fn solve_f32() {
         let fun = |x: f32, y: f32| -> f32 { 2.0 * x + y };
         let prob = ODEProblem {
-            f: Box::new(fun),
+            f: fun,
             u0: 1.0,
             tspan: (1.0, 1.1),
         };
@@ -174,7 +175,7 @@ mod tests {
     fn solve_f64() {
         let fun = |x: f64, y: f64| -> f64 { 2.0 * x + y };
         let prob = ODEProblem {
-            f: Box::new(fun),
+            f: fun,
             u0: 1.0,
             tspan: (1.0, 1.1),
         };
