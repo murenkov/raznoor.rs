@@ -4,7 +4,6 @@ use num_traits::Float;
 use num_traits::FromPrimitive;
 use strum_macros::EnumIter;
 
-#[macro_use]
 pub mod utils;
 
 pub struct ODESolution<T> {
