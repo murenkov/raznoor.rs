@@ -68,7 +68,7 @@ where
     }
 }
 
-fn stages_coefficents<T, F>(ks: &mut [T], bt: &ButcherTableu<T>, f: F, x: T, y: T, h: T)
+fn stages_coefficients<T, F>(ks: &mut [T], bt: &ButcherTableu<T>, f: F, x: T, y: T, h: T)
 where
     T: Float + num_traits::FromPrimitive,
     F: Fn(T, T) -> T,
@@ -93,7 +93,7 @@ where
     let mut ks: Vec<T> = vec![T::zero(); stages];
     for (i, x) in xs.windows(2).enumerate() {
         let h = x[1] - x[0];
-        stages_coefficents(&mut ks, &bt, &f, x[0], ys[i], h);
+        stages_coefficients(&mut ks, &bt, &f, x[0], ys[i], h);
 
         let mut s = T::zero();
         for (m, &k) in ks.iter().enumerate() {
