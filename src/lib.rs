@@ -15,7 +15,7 @@ type Vector<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 1]>>;
 type Matrix<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 2]>>;
 
 #[derive(Debug)]
-struct ButcherTableu<T: Float> {
+struct ButcherTableau<T: Float> {
     a: Matrix<T>,
     b: Vector<T>,
     c: Vector<T>,
@@ -41,7 +41,7 @@ where
     a.map(|x: &f64| cast(*x))
 }
 
-fn butcher_table<T>(size: usize) -> ButcherTableu<T>
+fn butcher_tableau<T>(size: usize) -> ButcherTableau<T>
 where
     T: Float + num_traits::FromPrimitive,
 {
@@ -49,17 +49,17 @@ where
 
     let a = runge_kutta_matrix::<T>(size);
     match size {
-        1_usize => ButcherTableu {
+        1_usize => ButcherTableau {
             a,
             b: arr1(&[1.0]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0]).map(|x: &f64| cast(*x)),
         },
-        2_usize => ButcherTableu {
+        2_usize => ButcherTableau {
             a,
             b: arr1(&[0.5, 0.5]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0, 1.0]).map(|x: &f64| cast(*x)),
         },
-        4_usize => ButcherTableu {
+        4_usize => ButcherTableau {
             a,
             b: arr1(&[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0, 0.5, 0.5, 1.0]).map(|x: &f64| cast(*x)),
@@ -68,7 +68,7 @@ where
     }
 }
 
-fn stages_coefficients<T, F>(ks: &mut [T], bt: &ButcherTableu<T>, f: F, x: T, y: T, h: T)
+fn stages_coefficients<T, F>(ks: &mut [T], bt: &ButcherTableau<T>, f: F, x: T, y: T, h: T)
 where
     T: Float + num_traits::FromPrimitive,
     F: Fn(T, T) -> T,
@@ -89,7 +89,7 @@ where
 {
     ys[0] = y_0;
 
-    let bt = butcher_table::<T>(stages);
+    let bt = butcher_tableau::<T>(stages);
     let mut ks: Vec<T> = vec![T::zero(); stages];
     for (i, x) in xs.windows(2).enumerate() {
         let h = x[1] - x[0];
