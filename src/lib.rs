@@ -12,6 +12,23 @@ pub struct ODESolution<T> {
     pub u: Box<[Box<[T]>]>,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum SolverError {
+    UnsupportedStageCount(usize),
+}
+
+impl std::fmt::Display for SolverError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SolverError::UnsupportedStageCount(n) => {
+                write!(f, "unsupported Runge-Kutta stage count: {n}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for SolverError {}
+
 type Vector<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 1]>>;
 type Matrix<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 2]>>;
 
@@ -22,56 +39,56 @@ struct ButcherTableau<T: Float> {
     c: Vector<T>,
 }
 
-fn runge_kutta_matrix<T>(size: usize) -> Matrix<T>
+fn runge_kutta_matrix<T>(size: usize) -> Result<Matrix<T>, SolverError>
 where
-    T: Float + num_traits::FromPrimitive,
+    T: Float + FromPrimitive,
 {
     let cast = |x: f64| -> T { FromPrimitive::from_f64(x).unwrap() };
 
     let a = match size {
-        1_usize => arr2(&[[0.0]]),
-        2_usize => arr2(&[[0.0, 0.0], [1.0, 0.0]]),
-        4_usize => arr2(&[
+        1 => arr2(&[[0.0]]),
+        2 => arr2(&[[0.0, 0.0], [1.0, 0.0]]),
+        4 => arr2(&[
             [0.0, 0.0, 0.0, 0.0],
             [0.5, 0.0, 0.0, 0.0],
             [0.0, 0.5, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],
         ]),
-        _ => unimplemented!(),
+        _ => return Err(SolverError::UnsupportedStageCount(size)),
     };
-    a.map(|x: &f64| cast(*x))
+    Ok(a.map(|x: &f64| cast(*x)))
 }
 
-fn butcher_tableau<T>(size: usize) -> ButcherTableau<T>
+fn butcher_tableau<T>(size: usize) -> Result<ButcherTableau<T>, SolverError>
 where
-    T: Float + num_traits::FromPrimitive,
+    T: Float + FromPrimitive,
 {
     let cast = |x: f64| -> T { FromPrimitive::from_f64(x).unwrap() };
 
-    let a = runge_kutta_matrix::<T>(size);
+    let a = runge_kutta_matrix::<T>(size)?;
     match size {
-        1_usize => ButcherTableau {
+        1 => Ok(ButcherTableau {
             a,
             b: arr1(&[1.0]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0]).map(|x: &f64| cast(*x)),
-        },
-        2_usize => ButcherTableau {
+        }),
+        2 => Ok(ButcherTableau {
             a,
             b: arr1(&[0.5, 0.5]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0, 1.0]).map(|x: &f64| cast(*x)),
-        },
-        4_usize => ButcherTableau {
+        }),
+        4 => Ok(ButcherTableau {
             a,
             b: arr1(&[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0, 0.5, 0.5, 1.0]).map(|x: &f64| cast(*x)),
-        },
-        _ => unimplemented!(),
+        }),
+        _ => Err(SolverError::UnsupportedStageCount(size)),
     }
 }
 
 fn stages_coefficients<T, F>(ks: &mut [T], bt: &ButcherTableau<T>, f: F, x: T, y: T, h: T)
 where
-    T: Float + num_traits::FromPrimitive,
+    T: Float + FromPrimitive,
     F: Fn(T, T) -> T,
 {
     for m in 0..ks.len() {
@@ -83,14 +100,20 @@ where
     }
 }
 
-fn runge_kutta_n<T, F>(ys: &mut [T], f: F, xs: &[T], y_0: T, stages: usize)
+fn runge_kutta_n<T, F>(
+    ys: &mut [T],
+    f: F,
+    xs: &[T],
+    y_0: T,
+    stages: usize,
+) -> Result<(), SolverError>
 where
-    T: Float + num_traits::FromPrimitive,
+    T: Float + FromPrimitive,
     F: Fn(T, T) -> T,
 {
     ys[0] = y_0;
 
-    let bt = butcher_tableau::<T>(stages);
+    let bt = butcher_tableau::<T>(stages)?;
     let mut ks = [T::zero(); 4];
     for (i, x) in xs.windows(2).enumerate() {
         let h = x[1] - x[0];
@@ -103,6 +126,7 @@ where
 
         ys[i + 1] = ys[i] + s * h;
     }
+    Ok(())
 }
 
 pub struct ODEProblem<T: Float, F: Fn(T, T) -> T> {
@@ -118,9 +142,13 @@ pub enum DEAlgorithm {
     ExplicitRungeKutta4,
 }
 
-pub fn solve<T, F>(prob: &ODEProblem<T, F>, alg: DEAlgorithm, dt: T) -> ODESolution<T>
+pub fn solve<T, F>(
+    prob: &ODEProblem<T, F>,
+    alg: DEAlgorithm,
+    dt: T,
+) -> Result<ODESolution<T>, SolverError>
 where
-    T: Float + num_traits::FromPrimitive,
+    T: Float + FromPrimitive,
     F: Fn(T, T) -> T,
 {
     let n_steps = ((prob.tspan.1 - prob.tspan.0) / dt)
@@ -137,13 +165,13 @@ where
 
     let mut ys = vec![T::zero(); xs.len()];
     match alg {
-        DEAlgorithm::ExplicitRungeKutta1 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 1),
-        DEAlgorithm::ExplicitRungeKutta2 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 2),
-        DEAlgorithm::ExplicitRungeKutta4 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 4),
+        DEAlgorithm::ExplicitRungeKutta1 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 1)?,
+        DEAlgorithm::ExplicitRungeKutta2 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 2)?,
+        DEAlgorithm::ExplicitRungeKutta4 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 4)?,
     }
     let us: Box<[Box<[T]>]> = Box::new([ys.into()]);
 
-    ODESolution::<T> { t: xs, u: us }
+    Ok(ODESolution::<T> { t: xs, u: us })
 }
 
 #[cfg(test)]
@@ -161,7 +189,7 @@ mod tests {
         };
 
         for alg in DEAlgorithm::iter() {
-            let ys = solve(&prob, alg, 0.01);
+            let ys = solve(&prob, alg, 0.01).unwrap();
             let ys_ref: Vec<f32> = (0..11)
                 .map(|x| 1.0 + (x as f32) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
@@ -181,7 +209,7 @@ mod tests {
         };
 
         for alg in DEAlgorithm::iter() {
-            let ys = solve(&prob, alg, 0.01);
+            let ys = solve(&prob, alg, 0.01).unwrap();
             let ys_ref: Vec<f64> = (0..11)
                 .map(|x| 1.0 + (x as f64) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
