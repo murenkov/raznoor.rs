@@ -105,9 +105,9 @@ where
 }
 
 pub struct ODEProblem<T: Float> {
-    f: Box<dyn Fn(T, T) -> T>,
-    u0: T,
-    tspan: (T, T),
+    pub f: Box<dyn Fn(T, T) -> T>,
+    pub u0: T,
+    pub tspan: (T, T),
 }
 
 #[derive(Debug, EnumIter)]
