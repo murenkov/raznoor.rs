@@ -18,9 +18,12 @@ pub struct ODESolution<T> {
 
 /// Errors that can occur during ODE solving.
 ///
+/// This enum is non-exhaustive; new variants may be added in future releases.
+///
 /// # Variants
 /// * `UnsupportedStageCount(usize)` — The requested number of Runge-Kutta stages is not supported.
 #[derive(Debug, PartialEq)]
+#[non_exhaustive]
 pub enum SolverError {
     UnsupportedStageCount(usize),
 }
@@ -155,11 +158,14 @@ pub struct ODEProblem<T: Float, F: Fn(T, T) -> T> {
 
 /// Available ODE solving algorithms.
 ///
+/// This enum is non-exhaustive; new variants may be added in future releases.
+///
 /// # Variants
 /// * `ExplicitRungeKutta1` — The first-order explicit Runge-Kutta method (Euler's method).
 /// * `ExplicitRungeKutta2` — The second-order explicit Runge-Kutta method (midpoint method).
 /// * `ExplicitRungeKutta4` — The fourth-order explicit Runge-Kutta method (classic RK4).
 #[derive(Debug, Clone, EnumIter)]
+#[non_exhaustive]
 pub enum DEAlgorithm {
     ExplicitRungeKutta1,
     ExplicitRungeKutta2,
