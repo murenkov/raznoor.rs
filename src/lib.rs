@@ -6,7 +6,6 @@ use ndarray::{ArrayBase, OwnedRepr};
 use ndarray::{arr1, arr2};
 use num_traits::Float;
 use num_traits::FromPrimitive;
-use strum_macros::EnumIter;
 
 /// Utility functions for the ODE solver.
 pub mod utils;
@@ -171,7 +170,7 @@ pub struct ODEProblem<T: Float, F: Fn(T, T) -> T> {
 /// * `ExplicitRungeKutta1` — The first-order explicit Runge-Kutta method (Euler's method).
 /// * `ExplicitRungeKutta2` — The second-order explicit Runge-Kutta method (midpoint method).
 /// * `ExplicitRungeKutta4` — The fourth-order explicit Runge-Kutta method (classic RK4).
-#[derive(Debug, Clone, EnumIter)]
+#[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum DEAlgorithm {
     /// First-order explicit Runge-Kutta (Euler's method).
@@ -224,7 +223,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use strum::IntoEnumIterator;
+
+    const ALL_ALGORITHMS: &[DEAlgorithm] = &[
+        DEAlgorithm::ExplicitRungeKutta1,
+        DEAlgorithm::ExplicitRungeKutta2,
+        DEAlgorithm::ExplicitRungeKutta4,
+    ];
 
     #[test]
     fn solve_f32() {
@@ -235,8 +239,8 @@ mod tests {
             tspan: (1.0, 1.1),
         };
 
-        for alg in DEAlgorithm::iter() {
-            let ys = solve(&prob, alg, 0.01).unwrap();
+        for alg in ALL_ALGORITHMS {
+            let ys = solve(&prob, alg.clone(), 0.01).unwrap();
             let ys_ref: Vec<f32> = (0..11)
                 .map(|x| 1.0 + (x as f32) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
@@ -255,8 +259,8 @@ mod tests {
             tspan: (1.0, 1.1),
         };
 
-        for alg in DEAlgorithm::iter() {
-            let ys = solve(&prob, alg, 0.01).unwrap();
+        for alg in ALL_ALGORITHMS {
+            let ys = solve(&prob, alg.clone(), 0.01).unwrap();
             let ys_ref: Vec<f64> = (0..11)
                 .map(|x| 1.0 + (x as f64) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
