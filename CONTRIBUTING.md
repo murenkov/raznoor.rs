@@ -15,6 +15,8 @@
 - Before committing, run `cargo fmt`, `cargo clippy`, and `cargo test`.
 - Write commit messages using the [conventional commits](https://www.conventionalcommits.org/) convention.
 - Use both a short description line and a detailed commit message body.
+- Update or add tests to cover any new or changed functionality.
+- Keep the README.md and any related documentation in sync with code changes.
 
 ## Code Quality
 
