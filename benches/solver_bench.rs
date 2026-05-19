@@ -1,6 +1,7 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use raznur::{DEAlgorithm, ODEProblem, solve};
 
+/// Benchmark ODE solver accuracy and performance across algorithm/type combinations.
 fn ode_solver(c: &mut Criterion) {
     let mut group = c.benchmark_group("solver");
 
@@ -49,6 +50,7 @@ fn ode_solver(c: &mut Criterion) {
     group.finish();
 }
 
+/// Benchmark ODE solvers on a large problem with 100k steps.
 fn ode_solver_large(c: &mut Criterion) {
     let mut group = c.benchmark_group("large_problem");
 
@@ -77,6 +79,7 @@ fn ode_solver_large(c: &mut Criterion) {
     group.finish();
 }
 
+/// Compare the precision of RK4 between f32 and f64.
 fn precision_compare(c: &mut Criterion) {
     let mut group = c.benchmark_group("precision");
 
