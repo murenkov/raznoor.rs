@@ -8,3 +8,10 @@ ndarray = "0.17.2"
 num-traits = "0.2.19"
 strum = "0.27.2"
 strum_macros = "0.27.2"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "solver_bench"
+harness = false
