@@ -2,7 +2,6 @@ use ndarray::{ArrayBase, OwnedRepr};
 use ndarray::{arr1, arr2};
 use num_traits::Float;
 use num_traits::FromPrimitive;
-use num_traits::ToPrimitive;
 use strum_macros::EnumIter;
 
 pub mod utils;
@@ -181,10 +180,8 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, T) -> T,
 {
-    let n_steps = ((prob.tspan.1 - prob.tspan.0) / dt)
-        .floor()
-        .to_usize()
-        .unwrap_or(0);
+    let n_steps =
+        num_traits::cast::<T, usize>(((prob.tspan.1 - prob.tspan.0) / dt).floor()).unwrap_or(0);
     let mut xs: Vec<T> = Vec::with_capacity(n_steps + 2);
     xs.push(prob.tspan.0);
     for i in 1..n_steps {
