@@ -51,7 +51,9 @@ fn runge_kutta_matrix<T>(size: usize) -> Result<Matrix<T>, SolverError>
 where
     T: Float + FromPrimitive,
 {
-    let cast = |x: f64| -> T { FromPrimitive::from_f64(x).unwrap() };
+    let cast = |x: f64| -> T {
+        FromPrimitive::from_f64(x).expect("Butcher tableau coefficients are valid f64 constants")
+    };
 
     let a = match size {
         1 => arr2(&[[0.0]]),
@@ -71,7 +73,9 @@ fn butcher_tableau<T>(size: usize) -> Result<ButcherTableau<T>, SolverError>
 where
     T: Float + FromPrimitive,
 {
-    let cast = |x: f64| -> T { FromPrimitive::from_f64(x).unwrap() };
+    let cast = |x: f64| -> T {
+        FromPrimitive::from_f64(x).expect("Butcher tableau coefficients are valid f64 constants")
+    };
 
     let a = runge_kutta_matrix::<T>(size)?;
     match size {
@@ -185,7 +189,7 @@ where
     let mut xs: Vec<T> = Vec::with_capacity(n_steps + 2);
     xs.push(prob.tspan.0);
     for i in 1..n_steps {
-        xs.push(prob.tspan.0 + dt * T::from_usize(i).unwrap());
+        xs.push(prob.tspan.0 + dt * T::from_usize(i).expect("step index fits in the numeric type"));
     }
     xs.push(prob.tspan.1);
     let xs: Box<[T]> = xs.into();
