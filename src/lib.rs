@@ -111,7 +111,7 @@ pub struct ODEProblem<T: Float, F: Fn(T, T) -> T> {
     pub tspan: (T, T),
 }
 
-#[derive(Debug, EnumIter)]
+#[derive(Debug, Clone, EnumIter)]
 pub enum DEAlgorithm {
     ExplicitRungeKutta1,
     ExplicitRungeKutta2,
