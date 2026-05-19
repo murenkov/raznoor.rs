@@ -53,7 +53,7 @@ struct ButcherTableau<T: Float> {
     c: Vector<T>,
 }
 
-fn runge_kutta_matrix<T>(size: usize) -> Result<Matrix<T>, SolverError>
+fn runge_kutta_matrix<T>(size: usize) -> Matrix<T>
 where
     T: Float + FromPrimitive,
 {
@@ -61,18 +61,18 @@ where
         FromPrimitive::from_f64(x).expect("Butcher tableau coefficients are valid f64 constants")
     };
 
-    let a = match size {
-        1 => arr2(&[[0.0]]),
-        2 => arr2(&[[0.0, 0.0], [1.0, 0.0]]),
+    match size {
+        1 => arr2(&[[0.0]]).map(|x: &f64| cast(*x)),
+        2 => arr2(&[[0.0, 0.0], [1.0, 0.0]]).map(|x: &f64| cast(*x)),
         4 => arr2(&[
             [0.0, 0.0, 0.0, 0.0],
             [0.5, 0.0, 0.0, 0.0],
             [0.0, 0.5, 0.0, 0.0],
             [0.0, 0.0, 1.0, 0.0],
-        ]),
-        _ => return Err(SolverError::UnsupportedStageCount(size)),
-    };
-    Ok(a.map(|x: &f64| cast(*x)))
+        ])
+        .map(|x: &f64| cast(*x)),
+        _ => unreachable!("runge_kutta_matrix is only called with validated stage counts"),
+    }
 }
 
 fn butcher_tableau<T>(size: usize) -> Result<ButcherTableau<T>, SolverError>
@@ -83,7 +83,12 @@ where
         FromPrimitive::from_f64(x).expect("Butcher tableau coefficients are valid f64 constants")
     };
 
-    let a = runge_kutta_matrix::<T>(size)?;
+    // Validate size before calling the infallible runge_kutta_matrix
+    if !matches!(size, 1 | 2 | 4) {
+        return Err(SolverError::UnsupportedStageCount(size));
+    }
+
+    let a = runge_kutta_matrix::<T>(size);
     match size {
         1 => Ok(ButcherTableau {
             a,
@@ -100,7 +105,7 @@ where
             b: arr1(&[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0]).map(|x: &f64| cast(*x)),
             c: arr1(&[0.0, 0.5, 0.5, 1.0]).map(|x: &f64| cast(*x)),
         }),
-        _ => Err(SolverError::UnsupportedStageCount(size)),
+        _ => unreachable!("size validated above"),
     }
 }
 
