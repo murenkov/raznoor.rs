@@ -110,6 +110,11 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, T) -> T,
 {
+    debug_assert_eq!(
+        ks.len(),
+        bt.a.nrows(),
+        "ks length must match the Butcher tableau size"
+    );
     for m in 0..ks.len() {
         let mut sum = T::zero();
         for (i, &k) in ks.iter().enumerate() {
