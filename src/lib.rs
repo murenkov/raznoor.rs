@@ -122,13 +122,13 @@ where
     ys[0] = y_0;
 
     let bt = butcher_tableau::<T>(stages)?;
-    let mut ks = [T::zero(); 4];
+    let mut ks = vec![T::zero(); stages];
     for (i, x) in xs.windows(2).enumerate() {
         let h = x[1] - x[0];
-        stages_coefficients(&mut ks[..stages], &bt, &f, x[0], ys[i], h);
+        stages_coefficients(&mut ks, &bt, &f, x[0], ys[i], h);
 
         let mut s = T::zero();
-        for (m, &k) in ks[..stages].iter().enumerate() {
+        for (m, &k) in ks.iter().enumerate() {
             s = s + bt.b[m] * k;
         }
 
