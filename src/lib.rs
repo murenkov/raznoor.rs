@@ -7,11 +7,20 @@ use strum_macros::EnumIter;
 
 pub mod utils;
 
+/// The solution of an ODE, containing time points and corresponding state vectors.
+///
+/// # Fields
+/// * `t` — Time points at which the solution was evaluated.
+/// * `u` — State vectors at each time point (one vector per dependent variable).
 pub struct ODESolution<T> {
     pub t: Box<[T]>,
     pub u: Box<[Box<[T]>]>,
 }
 
+/// Errors that can occur during ODE solving.
+///
+/// # Variants
+/// * `UnsupportedStageCount(usize)` — The requested number of Runge-Kutta stages is not supported.
 #[derive(Debug, PartialEq)]
 pub enum SolverError {
     UnsupportedStageCount(usize),
@@ -129,12 +138,24 @@ where
     Ok(())
 }
 
+/// An initial value problem for an ordinary differential equation.
+///
+/// # Fields
+/// * `f` — The right-hand side function `f(t, y)` defining the ODE `y' = f(t, y)`.
+/// * `u0` — The initial condition `y(t0)`.
+/// * `tspan` — The time span `(t0, t1)` over which to solve.
 pub struct ODEProblem<T: Float, F: Fn(T, T) -> T> {
     pub f: F,
     pub u0: T,
     pub tspan: (T, T),
 }
 
+/// Available ODE solving algorithms.
+///
+/// # Variants
+/// * `ExplicitRungeKutta1` — The first-order explicit Runge-Kutta method (Euler's method).
+/// * `ExplicitRungeKutta2` — The second-order explicit Runge-Kutta method (midpoint method).
+/// * `ExplicitRungeKutta4` — The fourth-order explicit Runge-Kutta method (classic RK4).
 #[derive(Debug, Clone, EnumIter)]
 pub enum DEAlgorithm {
     ExplicitRungeKutta1,
@@ -142,6 +163,15 @@ pub enum DEAlgorithm {
     ExplicitRungeKutta4,
 }
 
+/// Solve an ODE problem using the specified algorithm and step size.
+///
+/// # Parameters
+/// * `prob` — The ODE problem definition containing the right-hand side, initial condition, and time span.
+/// * `alg` — The Runge-Kutta algorithm variant to use for integration.
+/// * `dt` — The fixed step size for time-stepping.
+///
+/// # Returns
+/// `Ok(ODESolution<T>)` containing the time grid and computed states, or `Err(SolverError)` if the algorithm configuration is invalid.
 pub fn solve<T, F>(
     prob: &ODEProblem<T, F>,
     alg: DEAlgorithm,
