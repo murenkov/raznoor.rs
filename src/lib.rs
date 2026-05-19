@@ -1,18 +1,21 @@
+#![warn(missing_docs)]
+
+//! A Rust library for solving ordinary differential equations (ODEs) using explicit Runge-Kutta methods.
+
 use ndarray::{ArrayBase, OwnedRepr};
 use ndarray::{arr1, arr2};
 use num_traits::Float;
 use num_traits::FromPrimitive;
 use strum_macros::EnumIter;
 
+/// Utility functions for the ODE solver.
 pub mod utils;
 
 /// The solution of an ODE, containing time points and corresponding state vectors.
-///
-/// # Fields
-/// * `t` — Time points at which the solution was evaluated.
-/// * `u` — State vectors at each time point (one vector per dependent variable).
 pub struct ODESolution<T> {
+    /// Time points at which the solution was evaluated.
     pub t: Box<[T]>,
+    /// State vectors at each time point (one vector per dependent variable).
     pub u: Box<[Box<[T]>]>,
 }
 
@@ -25,6 +28,7 @@ pub struct ODESolution<T> {
 #[derive(Debug, PartialEq)]
 #[non_exhaustive]
 pub enum SolverError {
+    /// The requested number of Runge-Kutta stages is not supported.
     UnsupportedStageCount(usize),
 }
 
@@ -145,14 +149,12 @@ where
 }
 
 /// An initial value problem for an ordinary differential equation.
-///
-/// # Fields
-/// * `f` — The right-hand side function `f(t, y)` defining the ODE `y' = f(t, y)`.
-/// * `u0` — The initial condition `y(t0)`.
-/// * `tspan` — The time span `(t0, t1)` over which to solve.
 pub struct ODEProblem<T: Float, F: Fn(T, T) -> T> {
+    /// The right-hand side function `f(t, y)` defining the ODE `y' = f(t, y)`.
     pub f: F,
+    /// The initial condition `y(t0)`.
     pub u0: T,
+    /// The time span `(t0, t1)` over which to solve.
     pub tspan: (T, T),
 }
 
@@ -167,8 +169,11 @@ pub struct ODEProblem<T: Float, F: Fn(T, T) -> T> {
 #[derive(Debug, Clone, EnumIter)]
 #[non_exhaustive]
 pub enum DEAlgorithm {
+    /// First-order explicit Runge-Kutta (Euler's method).
     ExplicitRungeKutta1,
+    /// Second-order explicit Runge-Kutta (midpoint method).
     ExplicitRungeKutta2,
+    /// Fourth-order explicit Runge-Kutta (classic RK4).
     ExplicitRungeKutta4,
 }
 
