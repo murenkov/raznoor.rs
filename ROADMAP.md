@@ -1,0 +1,22 @@
+# Roadmap
+
+## v0.2
+
+- [ ] Support for systems of ODEs (vector-valued right-hand sides)
+- [ ] Additional Runge-Kutta methods (e.g. RK3, RK5, Fehlberg, Dormand–Prince)
+- [ ] Variable step-size (adaptive) integration
+- [ ] Event detection (root-finding during integration)
+
+## v0.3
+
+- [ ] Stiff solver support (implicit Runge-Kutta, BDF methods)
+- [ ] `no_std` support
+- [ ] Parallel/rayon-based batched solves
+- [ ] Interpolation routines (dense output)
+
+## v0.4
+
+- [ ] Boundary value problem (BVP) solvers
+- [ ] Delay differential equation (DDE) support
+- [ ] Sensitivity analysis / adjoint methods
+- [ ] Python bindings (via PyO3)
