@@ -2,7 +2,7 @@
 
 //! Explicit Runge-Kutta ODE solver for scalar and system initial value problems.
 
-use ndarray::{Array1, Array2, arr1, arr2};
+use ndarray::{Array1, Array2};
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
@@ -25,14 +25,13 @@ pub struct ODESolution<T> {
 /// Errors that can occur during ODE solving.
 ///
 /// This enum is non-exhaustive; new variants may be added in future releases.
-///
-/// # Variants
-/// * `UnsupportedStageCount(usize)` — The requested number of Runge-Kutta stages is not supported.
 #[derive(Debug, PartialEq)]
 #[non_exhaustive]
 pub enum SolverError {
     /// The requested number of Runge-Kutta stages is not supported.
     UnsupportedStageCount(usize),
+    /// No algorithm was specified.
+    NoAlgorithm,
 }
 
 impl std::fmt::Display for SolverError {
@@ -41,6 +40,7 @@ impl std::fmt::Display for SolverError {
             SolverError::UnsupportedStageCount(n) => {
                 write!(f, "unsupported Runge-Kutta stage count: {n}")
             }
+            SolverError::NoAlgorithm => write!(f, "no algorithm specified"),
         }
     }
 }
@@ -49,14 +49,14 @@ impl std::error::Error for SolverError {}
 
 type Matrix<T> = Array2<T>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ButcherTableau<T: Float> {
     a: Matrix<T>,
     b: Array1<T>,
     c: Array1<T>,
 }
 
-fn runge_kutta_matrix<T>(size: usize) -> Matrix<T>
+fn build_tableau<T>(a_coeffs: &[&[f64]], b_coeffs: &[f64], c_coeffs: &[f64]) -> ButcherTableau<T>
 where
     T: Float + FromPrimitive,
 {
@@ -64,51 +64,43 @@ where
         FromPrimitive::from_f64(x).expect("Butcher tableau coefficients are valid f64 constants")
     };
 
-    match size {
-        1 => arr2(&[[0.0]]).map(|x: &f64| cast(*x)),
-        2 => arr2(&[[0.0, 0.0], [1.0, 0.0]]).map(|x: &f64| cast(*x)),
-        4 => arr2(&[
-            [0.0, 0.0, 0.0, 0.0],
-            [0.5, 0.0, 0.0, 0.0],
-            [0.0, 0.5, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-        ])
-        .map(|x: &f64| cast(*x)),
-        _ => unreachable!("runge_kutta_matrix is only called with validated stage counts"),
+    let n_stages = c_coeffs.len();
+    let mut a_arr = Vec::with_capacity(n_stages * n_stages);
+    for row in a_coeffs {
+        for &val in *row {
+            a_arr.push(cast(val));
+        }
     }
+    let a = Matrix::from_shape_vec((n_stages, n_stages), a_arr)
+        .expect("Butcher tableau A matrix is square");
+
+    let b: Array1<T> = b_coeffs.iter().map(|&x| cast(x)).collect();
+    let c: Array1<T> = c_coeffs.iter().map(|&x| cast(x)).collect();
+
+    ButcherTableau { a, b, c }
 }
 
-fn butcher_tableau<T>(size: usize) -> Result<ButcherTableau<T>, SolverError>
+fn butcher_tableau<T>(alg: &DEAlgorithm) -> Result<ButcherTableau<T>, SolverError>
 where
     T: Float + FromPrimitive,
 {
-    let cast = |x: f64| -> T {
-        FromPrimitive::from_f64(x).expect("Butcher tableau coefficients are valid f64 constants")
-    };
-
-    // Validate size before calling the infallible runge_kutta_matrix
-    if !matches!(size, 1 | 2 | 4) {
-        return Err(SolverError::UnsupportedStageCount(size));
-    }
-
-    let a = runge_kutta_matrix::<T>(size);
-    match size {
-        1 => Ok(ButcherTableau {
-            a,
-            b: arr1(&[1.0]).map(|x: &f64| cast(*x)),
-            c: arr1(&[0.0]).map(|x: &f64| cast(*x)),
-        }),
-        2 => Ok(ButcherTableau {
-            a,
-            b: arr1(&[0.5, 0.5]).map(|x: &f64| cast(*x)),
-            c: arr1(&[0.0, 1.0]).map(|x: &f64| cast(*x)),
-        }),
-        4 => Ok(ButcherTableau {
-            a,
-            b: arr1(&[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0]).map(|x: &f64| cast(*x)),
-            c: arr1(&[0.0, 0.5, 0.5, 1.0]).map(|x: &f64| cast(*x)),
-        }),
-        _ => unreachable!("size validated above"),
+    match alg {
+        DEAlgorithm::ExplicitRungeKutta1 => Ok(build_tableau(&[&[0.0]], &[1.0], &[0.0])),
+        DEAlgorithm::ExplicitRungeKutta2 => Ok(build_tableau(
+            &[&[0.0, 0.0], &[1.0, 0.0]],
+            &[0.5, 0.5],
+            &[0.0, 1.0],
+        )),
+        DEAlgorithm::ExplicitRungeKutta4 => Ok(build_tableau(
+            &[
+                &[0.0, 0.0, 0.0, 0.0],
+                &[0.5, 0.0, 0.0, 0.0],
+                &[0.0, 0.5, 0.0, 0.0],
+                &[0.0, 0.0, 1.0, 0.0],
+            ],
+            &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
+            &[0.0, 0.5, 0.5, 1.0],
+        )),
     }
 }
 
@@ -117,16 +109,16 @@ where
 /// # Parameters
 /// * `xs` — Time grid points (must contain at least two elements).
 /// * `y0` — Initial state vector of length `n`.
-/// * `stages` — Number of Runge-Kutta stages (must be 1, 2, or 4).
+/// * `tableau` — The Butcher tableau defining the Runge-Kutta method.
 /// * `f` — The right-hand side function `f(t, u)` returning the derivative vector.
 ///
 /// # Returns
 /// A matrix of shape `(n, len(xs))` where each column is the state at the corresponding time
-/// point, or `Err(SolverError)` if the stage count is unsupported.
+/// point.
 fn runge_kutta_system<T, F>(
     xs: &[T],
     y0: &Array1<T>,
-    stages: usize,
+    tableau: &ButcherTableau<T>,
     f: &F,
 ) -> Result<Array2<T>, SolverError>
 where
@@ -135,7 +127,7 @@ where
 {
     let n = y0.len();
     let n_steps = xs.len();
-    let bt = butcher_tableau::<T>(stages)?;
+    let stages = tableau.c.len();
 
     let mut u = Array2::<T>::zeros((n, n_steps));
     u.column_mut(0).assign(y0);
@@ -148,19 +140,19 @@ where
         for m in 0..stages {
             let mut arg = u.column(i).to_owned();
             for (j, k) in ks.iter().enumerate() {
-                let coeff = bt.a[[m, j]];
+                let coeff = tableau.a[[m, j]];
                 if coeff != T::zero() {
                     ndarray::Zip::from(&mut arg)
                         .and(k)
                         .for_each(|a, &kv| *a = *a + h * coeff * kv);
                 }
             }
-            ks[m] = f(xs[i] + bt.c[m] * h, &arg);
+            ks[m] = f(xs[i] + tableau.c[m] * h, &arg);
         }
 
         let mut update = Array1::<T>::zeros(n);
         for (m, k) in ks.iter().enumerate() {
-            let coeff = bt.b[m];
+            let coeff = tableau.b[m];
             if coeff != T::zero() {
                 ndarray::Zip::from(&mut update)
                     .and(k)
@@ -197,11 +189,6 @@ pub struct ODEProblem<T: Float, F> {
 /// Available ODE solving algorithms.
 ///
 /// This enum is non-exhaustive; new variants may be added in future releases.
-///
-/// # Variants
-/// * `ExplicitRungeKutta1` — The first-order explicit Runge-Kutta method (Euler's method).
-/// * `ExplicitRungeKutta2` — The second-order explicit Runge-Kutta method (midpoint method).
-/// * `ExplicitRungeKutta4` — The fourth-order explicit Runge-Kutta method (classic RK4).
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum DEAlgorithm {
@@ -242,13 +229,8 @@ where
     }
     xs.push(prob.tspan.1);
 
-    let stages = match alg {
-        DEAlgorithm::ExplicitRungeKutta1 => 1,
-        DEAlgorithm::ExplicitRungeKutta2 => 2,
-        DEAlgorithm::ExplicitRungeKutta4 => 4,
-    };
-
-    let u = runge_kutta_system(&xs, &prob.u0, stages, &prob.f)?;
+    let tableau = butcher_tableau::<T>(&alg)?;
+    let u = runge_kutta_system(&xs, &prob.u0, &tableau, &prob.f)?;
 
     Ok(ODESolution::<T> { t: xs.into(), u })
 }
