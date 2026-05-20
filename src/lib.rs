@@ -374,47 +374,32 @@ mod tests {
         DEAlgorithm::DormandPrince45,
     ];
 
-    #[test]
-    fn solve_f32() {
-        let fun = |x: f32, y: &Array1<f32>| -> Array1<f32> { array![2.0 * x + y[0]] };
-        let prob = ODEProblem {
-            f: fun,
-            u0: array![1.0],
-            tspan: (1.0, 1.1),
+    macro_rules! scalar_ode_test {
+        ($name:ident, $ty:ty) => {
+            #[test]
+            fn $name() {
+                let fun = |x: $ty, y: &Array1<$ty>| -> Array1<$ty> { array![2.0 * x + y[0]] };
+                let prob = ODEProblem {
+                    f: fun,
+                    u0: array![1.0],
+                    tspan: (1.0, 1.1),
+                };
+                for alg in ALL_ALGORITHMS {
+                    let sol = solve(&prob, alg.clone(), 0.01).unwrap();
+                    let ys_ref: Vec<$ty> = (0..11)
+                        .map(|i| 1.0 + (i as $ty) * 0.01)
+                        .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
+                        .collect();
+                    let computed = sol.u.row(0);
+                    let res = utils::residual(computed.as_slice().unwrap(), &ys_ref).unwrap();
+                    assert!(res <= 0.01);
+                }
+            }
         };
-
-        for alg in ALL_ALGORITHMS {
-            let sol = solve(&prob, alg.clone(), 0.01).unwrap();
-            let ys_ref: Vec<f32> = (0..11)
-                .map(|x| 1.0 + (x as f32) * 0.01)
-                .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
-                .collect();
-            let computed = sol.u.row(0);
-            let res = utils::residual(computed.as_slice().unwrap(), &ys_ref).unwrap();
-            assert!(res <= 0.01);
-        }
     }
 
-    #[test]
-    fn solve_f64() {
-        let fun = |x: f64, y: &Array1<f64>| -> Array1<f64> { array![2.0 * x + y[0]] };
-        let prob = ODEProblem {
-            f: fun,
-            u0: array![1.0],
-            tspan: (1.0, 1.1),
-        };
-
-        for alg in ALL_ALGORITHMS {
-            let sol = solve(&prob, alg.clone(), 0.01).unwrap();
-            let ys_ref: Vec<f64> = (0..11)
-                .map(|x| 1.0 + (x as f64) * 0.01)
-                .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
-                .collect();
-            let computed = sol.u.row(0);
-            let res = utils::residual(computed.as_slice().unwrap(), &ys_ref).unwrap();
-            assert!(res <= 0.01);
-        }
-    }
+    scalar_ode_test!(solve_f32, f32);
+    scalar_ode_test!(solve_f64, f64);
 
     #[test]
     fn solve_system_two_vars() {
