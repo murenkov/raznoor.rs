@@ -364,18 +364,8 @@ mod tests {
     use super::*;
     use ndarray::array;
 
-    const ALL_ALGORITHMS: &[DEAlgorithm] = &[
-        DEAlgorithm::ExplicitRungeKutta1,
-        DEAlgorithm::ExplicitRungeKutta2,
-        DEAlgorithm::ExplicitRungeKutta3,
-        DEAlgorithm::ExplicitRungeKutta4,
-        DEAlgorithm::ExplicitRungeKutta5,
-        DEAlgorithm::Fehlberg45,
-        DEAlgorithm::DormandPrince45,
-    ];
-
     macro_rules! scalar_ode_test {
-        ($name:ident, $ty:ty) => {
+        ($name:ident, $ty:ty, $alg:expr) => {
             #[test]
             fn $name() {
                 let fun = |x: $ty, y: &Array1<$ty>| -> Array1<$ty> { array![2.0 * x + y[0]] };
@@ -384,44 +374,64 @@ mod tests {
                     u0: array![1.0],
                     tspan: (1.0, 1.1),
                 };
-                for alg in ALL_ALGORITHMS {
-                    let sol = solve(&prob, alg.clone(), 0.01).unwrap();
-                    let ys_ref: Vec<$ty> = (0..11)
-                        .map(|i| 1.0 + (i as $ty) * 0.01)
-                        .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
-                        .collect();
-                    let computed = sol.u.row(0);
-                    let res = utils::residual(computed.as_slice().unwrap(), &ys_ref).unwrap();
-                    assert!(res <= 0.01);
-                }
+                let sol = solve(&prob, $alg, 0.01).unwrap();
+                let ys_ref: Vec<$ty> = (0..11)
+                    .map(|i| 1.0 + (i as $ty) * 0.01)
+                    .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
+                    .collect();
+                let computed = sol.u.row(0);
+                let res = utils::residual(computed.as_slice().unwrap(), &ys_ref).unwrap();
+                assert!(res <= 0.01);
             }
         };
     }
 
-    scalar_ode_test!(solve_f32, f32);
-    scalar_ode_test!(solve_f64, f64);
+    scalar_ode_test!(solve_erk1_f32, f32, DEAlgorithm::ExplicitRungeKutta1);
+    scalar_ode_test!(solve_erk2_f32, f32, DEAlgorithm::ExplicitRungeKutta2);
+    scalar_ode_test!(solve_erk3_f32, f32, DEAlgorithm::ExplicitRungeKutta3);
+    scalar_ode_test!(solve_erk4_f32, f32, DEAlgorithm::ExplicitRungeKutta4);
+    scalar_ode_test!(solve_erk5_f32, f32, DEAlgorithm::ExplicitRungeKutta5);
+    scalar_ode_test!(solve_fehlberg45_f32, f32, DEAlgorithm::Fehlberg45);
+    scalar_ode_test!(solve_dopri54_f32, f32, DEAlgorithm::DormandPrince45);
+    scalar_ode_test!(solve_erk1_f64, f64, DEAlgorithm::ExplicitRungeKutta1);
+    scalar_ode_test!(solve_erk2_f64, f64, DEAlgorithm::ExplicitRungeKutta2);
+    scalar_ode_test!(solve_erk3_f64, f64, DEAlgorithm::ExplicitRungeKutta3);
+    scalar_ode_test!(solve_erk4_f64, f64, DEAlgorithm::ExplicitRungeKutta4);
+    scalar_ode_test!(solve_erk5_f64, f64, DEAlgorithm::ExplicitRungeKutta5);
+    scalar_ode_test!(solve_fehlberg45_f64, f64, DEAlgorithm::Fehlberg45);
+    scalar_ode_test!(solve_dopri54_f64, f64, DEAlgorithm::DormandPrince45);
 
-    #[test]
-    fn solve_system_two_vars() {
-        let fun = |_x: f64, y: &Array1<f64>| -> Array1<f64> { array![y[1], -y[0]] };
-        let prob = ODEProblem {
-            f: fun,
-            u0: array![0.0, 1.0],
-            tspan: (0.0, std::f64::consts::FRAC_PI_2),
+    macro_rules! system_ode_test {
+        ($name:ident, $alg:expr) => {
+            #[test]
+            fn $name() {
+                let fun = |_x: f64, y: &Array1<f64>| -> Array1<f64> { array![y[1], -y[0]] };
+                let prob = ODEProblem {
+                    f: fun,
+                    u0: array![0.0, 1.0],
+                    tspan: (0.0, std::f64::consts::FRAC_PI_2),
+                };
+
+                let sol = solve(&prob, $alg, 0.01).unwrap();
+                let ys0_ref: Vec<f64> = sol.t.iter().map(|&t| t.sin()).collect();
+                let ys1_ref: Vec<f64> = sol.t.iter().map(|&t| t.cos()).collect();
+
+                let computed0 = sol.u.row(0);
+                let res0 = utils::residual(computed0.as_slice().unwrap(), &ys0_ref).unwrap();
+                assert!(res0 <= 0.01);
+
+                let computed1 = sol.u.row(1);
+                let res1 = utils::residual(computed1.as_slice().unwrap(), &ys1_ref).unwrap();
+                assert!(res1 <= 0.01);
+            }
         };
-
-        for alg in ALL_ALGORITHMS {
-            let sol = solve(&prob, alg.clone(), 0.01).unwrap();
-            let ys0_ref: Vec<f64> = sol.t.iter().map(|&t| t.sin()).collect();
-            let ys1_ref: Vec<f64> = sol.t.iter().map(|&t| t.cos()).collect();
-
-            let computed0 = sol.u.row(0);
-            let res0 = utils::residual(computed0.as_slice().unwrap(), &ys0_ref).unwrap();
-            assert!(res0 <= 0.01);
-
-            let computed1 = sol.u.row(1);
-            let res1 = utils::residual(computed1.as_slice().unwrap(), &ys1_ref).unwrap();
-            assert!(res1 <= 0.01);
-        }
     }
+
+    system_ode_test!(solve_system_two_vars_erk1, DEAlgorithm::ExplicitRungeKutta1);
+    system_ode_test!(solve_system_two_vars_erk2, DEAlgorithm::ExplicitRungeKutta2);
+    system_ode_test!(solve_system_two_vars_erk3, DEAlgorithm::ExplicitRungeKutta3);
+    system_ode_test!(solve_system_two_vars_erk4, DEAlgorithm::ExplicitRungeKutta4);
+    system_ode_test!(solve_system_two_vars_erk5, DEAlgorithm::ExplicitRungeKutta5);
+    system_ode_test!(solve_system_two_vars_fehlberg45, DEAlgorithm::Fehlberg45);
+    system_ode_test!(solve_system_two_vars_dopri54, DEAlgorithm::DormandPrince45);
 }
