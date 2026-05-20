@@ -5,6 +5,7 @@
 - [x] Support for systems of ODEs (vector-valued right-hand sides)
 - [x] Additional Runge-Kutta methods (e.g. RK3, RK5, Fehlberg, Dormand–Prince)
 - [x] Variable step-size (adaptive) integration
+- [x] Refactor kernels: replace `DEAlgorithm` enum with individual Butcher tableau functions
 - [ ] Event detection (root-finding during integration)
 
 ## v0.3

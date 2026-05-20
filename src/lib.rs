@@ -54,16 +54,27 @@ impl std::error::Error for SolverError {}
 
 type Matrix<T> = Array2<T>;
 
+/// A Butcher tableau describing an explicit Runge–Kutta method.
 #[derive(Debug, Clone)]
-struct ButcherTableau<T: Float> {
-    a: Matrix<T>,
-    b: Array1<T>,
-    /// Lower-order embedded coefficients for error estimation (adaptive stepping).
-    b_embedded: Array1<T>,
-    c: Array1<T>,
+pub struct ButcherTableau<T: Float> {
+    /// Runge-Kutta matrix (pairwise stage couplings).
+    pub a: Matrix<T>,
+    /// Higher-order weights for the solution.
+    pub b: Array1<T>,
+    /// Lower-order embedded weights for error estimation (adaptive stepping).
+    pub b_embedded: Array1<T>,
+    /// Node positions.
+    pub c: Array1<T>,
 }
 
-fn build_tableau<T>(
+/// Build a [`ButcherTableau`] from coefficient slices.
+///
+/// # Parameters
+/// * `a_coeffs` — Row slices of the Runge–Kutta matrix (padded with zeros to form a square).
+/// * `b_coeffs` — Higher-order weight coefficients.
+/// * `b_embedded_coeffs` — Lower-order embedded weight coefficients (for adaptive error estimation).
+/// * `c_coeffs` — Node position coefficients.
+pub fn build_tableau<T>(
     a_coeffs: &[&[f64]],
     b_coeffs: &[f64],
     b_embedded_coeffs: &[f64],
@@ -98,150 +109,182 @@ where
     }
 }
 
-fn butcher_tableau<T>(alg: &DEAlgorithm) -> Result<ButcherTableau<T>, SolverError>
+/// Returns the Butcher tableau for the first-order explicit Runge-Kutta method (Euler's method).
+pub fn erk1<T>() -> ButcherTableau<T>
 where
     T: Float + FromPrimitive,
 {
-    match alg {
-        DEAlgorithm::ExplicitRungeKutta1 => Ok(build_tableau(&[&[0.0]], &[1.0], &[1.0], &[0.0])),
-        DEAlgorithm::ExplicitRungeKutta2 => Ok(build_tableau(
-            &[&[0.0, 0.0], &[1.0, 0.0]],
-            &[0.5, 0.5],
-            &[0.5, 0.5],
-            &[0.0, 1.0],
-        )),
-        DEAlgorithm::ExplicitRungeKutta3 => Ok(build_tableau(
-            &[&[0.0, 0.0, 0.0], &[0.5, 0.0, 0.0], &[-1.0, 2.0, 0.0]],
-            &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
-            &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
-            &[0.0, 0.5, 1.0],
-        )),
-        DEAlgorithm::ExplicitRungeKutta4 => Ok(build_tableau(
+    build_tableau(&[&[0.0]], &[1.0], &[1.0], &[0.0])
+}
+
+/// Returns the Butcher tableau for the second-order explicit Runge-Kutta method (midpoint method).
+pub fn erk2<T>() -> ButcherTableau<T>
+where
+    T: Float + FromPrimitive,
+{
+    build_tableau(
+        &[&[0.0, 0.0], &[1.0, 0.0]],
+        &[0.5, 0.5],
+        &[0.5, 0.5],
+        &[0.0, 1.0],
+    )
+}
+
+/// Returns the Butcher tableau for the third-order explicit Runge-Kutta method (Kutta's method).
+pub fn erk3<T>() -> ButcherTableau<T>
+where
+    T: Float + FromPrimitive,
+{
+    build_tableau(
+        &[&[0.0, 0.0, 0.0], &[0.5, 0.0, 0.0], &[-1.0, 2.0, 0.0]],
+        &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
+        &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
+        &[0.0, 0.5, 1.0],
+    )
+}
+
+/// Returns the Butcher tableau for the classical fourth-order explicit Runge-Kutta method (RK4).
+pub fn erk4<T>() -> ButcherTableau<T>
+where
+    T: Float + FromPrimitive,
+{
+    build_tableau(
+        &[
+            &[0.0, 0.0, 0.0, 0.0],
+            &[0.5, 0.0, 0.0, 0.0],
+            &[0.0, 0.5, 0.0, 0.0],
+            &[0.0, 0.0, 1.0, 0.0],
+        ],
+        &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
+        &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
+        &[0.0, 0.5, 0.5, 1.0],
+    )
+}
+
+/// Returns the Butcher tableau for Butcher's fifth-order explicit Runge-Kutta method.
+pub fn erk5<T>() -> ButcherTableau<T>
+where
+    T: Float + FromPrimitive,
+{
+    build_tableau(
+        &[
+            &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            &[1.0 / 4.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            &[1.0 / 8.0, 1.0 / 8.0, 0.0, 0.0, 0.0, 0.0],
+            &[0.0, 0.0, 1.0 / 2.0, 0.0, 0.0, 0.0],
+            &[3.0 / 16.0, -3.0 / 8.0, 3.0 / 8.0, 9.0 / 16.0, 0.0, 0.0],
             &[
-                &[0.0, 0.0, 0.0, 0.0],
-                &[0.5, 0.0, 0.0, 0.0],
-                &[0.0, 0.5, 0.0, 0.0],
-                &[0.0, 0.0, 1.0, 0.0],
-            ],
-            &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
-            &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
-            &[0.0, 0.5, 0.5, 1.0],
-        )),
-        DEAlgorithm::ExplicitRungeKutta5 => Ok(build_tableau(
-            &[
-                &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                &[1.0 / 4.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                &[1.0 / 8.0, 1.0 / 8.0, 0.0, 0.0, 0.0, 0.0],
-                &[0.0, 0.0, 1.0 / 2.0, 0.0, 0.0, 0.0],
-                &[3.0 / 16.0, -3.0 / 8.0, 3.0 / 8.0, 9.0 / 16.0, 0.0, 0.0],
-                &[
-                    -3.0 / 7.0,
-                    8.0 / 7.0,
-                    6.0 / 7.0,
-                    -12.0 / 7.0,
-                    8.0 / 7.0,
-                    0.0,
-                ],
-            ],
-            &[
-                7.0 / 90.0,
-                0.0,
-                32.0 / 90.0,
-                12.0 / 90.0,
-                32.0 / 90.0,
-                7.0 / 90.0,
-            ],
-            &[
-                7.0 / 90.0,
-                0.0,
-                32.0 / 90.0,
-                12.0 / 90.0,
-                32.0 / 90.0,
-                7.0 / 90.0,
-            ],
-            &[0.0, 1.0 / 4.0, 1.0 / 4.0, 1.0 / 2.0, 3.0 / 4.0, 1.0],
-        )),
-        DEAlgorithm::Fehlberg45 => Ok(build_tableau(
-            &[
-                &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                &[1.0 / 4.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                &[3.0 / 32.0, 9.0 / 32.0, 0.0, 0.0, 0.0, 0.0],
-                &[
-                    1932.0 / 2197.0,
-                    -7200.0 / 2197.0,
-                    7296.0 / 2197.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                ],
-                &[
-                    439.0 / 216.0,
-                    -8.0,
-                    3680.0 / 513.0,
-                    -845.0 / 4104.0,
-                    0.0,
-                    0.0,
-                ],
-                &[
-                    -8.0 / 27.0,
-                    2.0,
-                    -3544.0 / 2565.0,
-                    1859.0 / 4104.0,
-                    -11.0 / 40.0,
-                    0.0,
-                ],
-            ],
-            &[
-                16.0 / 135.0,
-                0.0,
-                6656.0 / 12825.0,
-                28561.0 / 56430.0,
-                -9.0 / 50.0,
-                2.0 / 55.0,
-            ],
-            &[
-                25.0 / 216.0,
-                0.0,
-                1408.0 / 2565.0,
-                2197.0 / 4104.0,
-                -1.0 / 5.0,
+                -3.0 / 7.0,
+                8.0 / 7.0,
+                6.0 / 7.0,
+                -12.0 / 7.0,
+                8.0 / 7.0,
                 0.0,
             ],
-            &[0.0, 1.0 / 4.0, 3.0 / 8.0, 12.0 / 13.0, 1.0, 1.0 / 2.0],
-        )),
-        DEAlgorithm::DormandPrince45 => Ok(build_tableau(
+        ],
+        &[
+            7.0 / 90.0,
+            0.0,
+            32.0 / 90.0,
+            12.0 / 90.0,
+            32.0 / 90.0,
+            7.0 / 90.0,
+        ],
+        &[
+            7.0 / 90.0,
+            0.0,
+            32.0 / 90.0,
+            12.0 / 90.0,
+            32.0 / 90.0,
+            7.0 / 90.0,
+        ],
+        &[0.0, 1.0 / 4.0, 1.0 / 4.0, 1.0 / 2.0, 3.0 / 4.0, 1.0],
+    )
+}
+
+/// Returns the Butcher tableau for Fehlberg's embedded 4(5) method (RKF45).
+pub fn fehlberg45<T>() -> ButcherTableau<T>
+where
+    T: Float + FromPrimitive,
+{
+    build_tableau(
+        &[
+            &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            &[1.0 / 4.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            &[3.0 / 32.0, 9.0 / 32.0, 0.0, 0.0, 0.0, 0.0],
             &[
-                &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                &[1.0 / 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                &[3.0 / 40.0, 9.0 / 40.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                &[44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0, 0.0, 0.0, 0.0, 0.0],
-                &[
-                    19372.0 / 6561.0,
-                    -25360.0 / 2187.0,
-                    64448.0 / 6561.0,
-                    -212.0 / 729.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                ],
-                &[
-                    9017.0 / 3168.0,
-                    -355.0 / 33.0,
-                    46732.0 / 5247.0,
-                    49.0 / 176.0,
-                    -5103.0 / 18656.0,
-                    0.0,
-                    0.0,
-                ],
-                &[
-                    35.0 / 384.0,
-                    0.0,
-                    500.0 / 1113.0,
-                    125.0 / 192.0,
-                    -2187.0 / 6784.0,
-                    11.0 / 84.0,
-                    0.0,
-                ],
+                1932.0 / 2197.0,
+                -7200.0 / 2197.0,
+                7296.0 / 2197.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+            &[
+                439.0 / 216.0,
+                -8.0,
+                3680.0 / 513.0,
+                -845.0 / 4104.0,
+                0.0,
+                0.0,
+            ],
+            &[
+                -8.0 / 27.0,
+                2.0,
+                -3544.0 / 2565.0,
+                1859.0 / 4104.0,
+                -11.0 / 40.0,
+                0.0,
+            ],
+        ],
+        &[
+            16.0 / 135.0,
+            0.0,
+            6656.0 / 12825.0,
+            28561.0 / 56430.0,
+            -9.0 / 50.0,
+            2.0 / 55.0,
+        ],
+        &[
+            25.0 / 216.0,
+            0.0,
+            1408.0 / 2565.0,
+            2197.0 / 4104.0,
+            -1.0 / 5.0,
+            0.0,
+        ],
+        &[0.0, 1.0 / 4.0, 3.0 / 8.0, 12.0 / 13.0, 1.0, 1.0 / 2.0],
+    )
+}
+
+/// Returns the Butcher tableau for the Dormand–Prince embedded 4(5) method (DOPRI54).
+pub fn dormand_prince45<T>() -> ButcherTableau<T>
+where
+    T: Float + FromPrimitive,
+{
+    build_tableau(
+        &[
+            &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            &[1.0 / 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            &[3.0 / 40.0, 9.0 / 40.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            &[44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0, 0.0, 0.0, 0.0, 0.0],
+            &[
+                19372.0 / 6561.0,
+                -25360.0 / 2187.0,
+                64448.0 / 6561.0,
+                -212.0 / 729.0,
+                0.0,
+                0.0,
+                0.0,
+            ],
+            &[
+                9017.0 / 3168.0,
+                -355.0 / 33.0,
+                46732.0 / 5247.0,
+                49.0 / 176.0,
+                -5103.0 / 18656.0,
+                0.0,
+                0.0,
             ],
             &[
                 35.0 / 384.0,
@@ -252,18 +295,27 @@ where
                 11.0 / 84.0,
                 0.0,
             ],
-            &[
-                5179.0 / 57600.0,
-                0.0,
-                7571.0 / 16695.0,
-                393.0 / 640.0,
-                -92097.0 / 339200.0,
-                187.0 / 2100.0,
-                1.0 / 40.0,
-            ],
-            &[0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0],
-        )),
-    }
+        ],
+        &[
+            35.0 / 384.0,
+            0.0,
+            500.0 / 1113.0,
+            125.0 / 192.0,
+            -2187.0 / 6784.0,
+            11.0 / 84.0,
+            0.0,
+        ],
+        &[
+            5179.0 / 57600.0,
+            0.0,
+            7571.0 / 16695.0,
+            393.0 / 640.0,
+            -92097.0 / 339200.0,
+            187.0 / 2100.0,
+            1.0 / 40.0,
+        ],
+        &[0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0],
+    )
 }
 
 /// Perform fixed-step explicit Runge-Kutta integration for a system of ODEs.
@@ -348,51 +400,24 @@ pub struct ODEProblem<T: Float, F> {
     pub tspan: (T, T),
 }
 
-/// Available ODE solving algorithms.
-///
-/// This enum is non-exhaustive; new variants may be added in future releases.
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub enum DEAlgorithm {
-    /// First-order explicit Runge-Kutta (Euler's method).
-    ExplicitRungeKutta1,
-    /// Second-order explicit Runge-Kutta (midpoint method).
-    ExplicitRungeKutta2,
-    /// Third-order explicit Runge-Kutta (Kutta's third-order method).
-    ExplicitRungeKutta3,
-    /// Fourth-order explicit Runge-Kutta (classic RK4).
-    ExplicitRungeKutta4,
-    /// Fifth-order explicit Runge-Kutta (Butcher's fifth-order method).
-    ExplicitRungeKutta5,
-    /// Fehlberg's embedded 4(5) method (RKF45).
-    Fehlberg45,
-    /// Dormand-Prince embedded 4(5) method (DOPRI54).
-    DormandPrince45,
-}
-
-/// Returns `true` if the algorithm is an embedded Runge-Kutta pair supporting adaptive stepping.
-fn is_embedded_algorithm(alg: &DEAlgorithm) -> bool {
-    matches!(alg, DEAlgorithm::Fehlberg45 | DEAlgorithm::DormandPrince45)
-}
-
 /// Solve an ODE problem using variable step-size (adaptive) integration.
 ///
-/// Uses an embedded Runge-Kutta pair (Fehlberg45 or DormandPrince45) to estimate the
+/// Uses an embedded Runge-Kutta pair (e.g. Fehlberg45 or Dormand–Prince) to estimate the
 /// local truncation error and adjust the step size accordingly with an I-controller.
 ///
 /// # Parameters
 /// * `prob` — The ODE problem definition.
-/// * `alg` — An embedded Runge-Kutta algorithm (Fehlberg45 or DormandPrince45).
+/// * `tableau` — The Butcher tableau of an embedded Runge–Kutta pair.
 /// * `h0` — Initial step size guess.
 /// * `atol` — Absolute tolerance for the error per step.
 /// * `rtol` — Relative tolerance for the error per step.
 ///
 /// # Returns
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories, or
-/// `Err(SolverError)` if the algorithm does not support adaptive stepping.
+/// `Err(SolverError)` if the tableau does not provide distinct embedded coefficients.
 pub fn solve_adaptive<T, F>(
     prob: &ODEProblem<T, F>,
-    alg: DEAlgorithm,
+    tableau: &ButcherTableau<T>,
     h0: T,
     atol: T,
     rtol: T,
@@ -401,11 +426,9 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    if !is_embedded_algorithm(&alg) {
+    if tableau.b == tableau.b_embedded {
         return Err(SolverError::AdaptiveNotSupported);
     }
-
-    let tableau = butcher_tableau::<T>(&alg)?;
     let n = prob.u0.len();
     let t0 = prob.tspan.0;
     let tf = prob.tspan.1;
@@ -520,20 +543,19 @@ where
     })
 }
 
-/// Solve an ODE problem using the specified algorithm and step size.
+/// Solve an ODE problem using the specified Butcher tableau and step size.
 ///
 /// # Parameters
 /// * `prob` — The ODE problem definition containing the right-hand side, initial condition,
 ///   and time span.
-/// * `alg` — The Runge-Kutta algorithm variant to use for integration.
+/// * `tableau` — The Butcher tableau defining the Runge-Kutta method.
 /// * `dt` — The fixed step size for time-stepping.
 ///
 /// # Returns
-/// `Ok(ODESolution<T>)` containing the time grid and state trajectories, or
-/// `Err(SolverError)` if the algorithm configuration is invalid.
+/// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
 pub fn solve<T, F>(
     prob: &ODEProblem<T, F>,
-    alg: DEAlgorithm,
+    tableau: &ButcherTableau<T>,
     dt: T,
 ) -> Result<ODESolution<T>, SolverError>
 where
@@ -549,8 +571,7 @@ where
     }
     xs.push(prob.tspan.1);
 
-    let tableau = butcher_tableau::<T>(&alg)?;
-    let u = runge_kutta_system(&xs, &prob.u0, &tableau, &prob.f)?;
+    let u = runge_kutta_system(&xs, &prob.u0, tableau, &prob.f)?;
 
     Ok(ODESolution::<T> { t: xs.into(), u })
 }
@@ -607,11 +628,11 @@ mod tests {
     }
 
     macro_rules! ode_test {
-        ($name:ident, $alg:expr, $setup:expr) => {
+        ($name:ident, $tableau:expr, $setup:expr) => {
             #[test]
             fn $name() {
                 let (prob, reference) = $setup;
-                let sol = solve(&prob, $alg, 0.01).unwrap();
+                let sol = solve(&prob, &$tableau, 0.01).unwrap();
                 for (i, ref_traj) in reference.iter().enumerate() {
                     let computed = sol.u.row(i);
                     let res = utils::residual(computed.as_slice().unwrap(), ref_traj).unwrap();
@@ -621,119 +642,79 @@ mod tests {
         };
     }
 
-    ode_test!(
-        solve_erk1_f32,
-        DEAlgorithm::ExplicitRungeKutta1,
-        linear_problem::<f32>()
-    );
-    ode_test!(
-        solve_erk2_f32,
-        DEAlgorithm::ExplicitRungeKutta2,
-        linear_problem::<f32>()
-    );
-    ode_test!(
-        solve_erk3_f32,
-        DEAlgorithm::ExplicitRungeKutta3,
-        linear_problem::<f32>()
-    );
-    ode_test!(
-        solve_erk4_f32,
-        DEAlgorithm::ExplicitRungeKutta4,
-        linear_problem::<f32>()
-    );
-    ode_test!(
-        solve_erk5_f32,
-        DEAlgorithm::ExplicitRungeKutta5,
-        linear_problem::<f32>()
-    );
+    ode_test!(solve_erk1_f32, erk1::<f32>(), linear_problem::<f32>());
+    ode_test!(solve_erk2_f32, erk2::<f32>(), linear_problem::<f32>());
+    ode_test!(solve_erk3_f32, erk3::<f32>(), linear_problem::<f32>());
+    ode_test!(solve_erk4_f32, erk4::<f32>(), linear_problem::<f32>());
+    ode_test!(solve_erk5_f32, erk5::<f32>(), linear_problem::<f32>());
     ode_test!(
         solve_fehlberg45_f32,
-        DEAlgorithm::Fehlberg45,
+        fehlberg45::<f32>(),
         linear_problem::<f32>()
     );
     ode_test!(
         solve_dopri54_f32,
-        DEAlgorithm::DormandPrince45,
+        dormand_prince45::<f32>(),
         linear_problem::<f32>()
     );
-    ode_test!(
-        solve_erk1_f64,
-        DEAlgorithm::ExplicitRungeKutta1,
-        linear_problem::<f64>()
-    );
-    ode_test!(
-        solve_erk2_f64,
-        DEAlgorithm::ExplicitRungeKutta2,
-        linear_problem::<f64>()
-    );
-    ode_test!(
-        solve_erk3_f64,
-        DEAlgorithm::ExplicitRungeKutta3,
-        linear_problem::<f64>()
-    );
-    ode_test!(
-        solve_erk4_f64,
-        DEAlgorithm::ExplicitRungeKutta4,
-        linear_problem::<f64>()
-    );
-    ode_test!(
-        solve_erk5_f64,
-        DEAlgorithm::ExplicitRungeKutta5,
-        linear_problem::<f64>()
-    );
+    ode_test!(solve_erk1_f64, erk1::<f64>(), linear_problem::<f64>());
+    ode_test!(solve_erk2_f64, erk2::<f64>(), linear_problem::<f64>());
+    ode_test!(solve_erk3_f64, erk3::<f64>(), linear_problem::<f64>());
+    ode_test!(solve_erk4_f64, erk4::<f64>(), linear_problem::<f64>());
+    ode_test!(solve_erk5_f64, erk5::<f64>(), linear_problem::<f64>());
     ode_test!(
         solve_fehlberg45_f64,
-        DEAlgorithm::Fehlberg45,
+        fehlberg45::<f64>(),
         linear_problem::<f64>()
     );
     ode_test!(
         solve_dopri54_f64,
-        DEAlgorithm::DormandPrince45,
+        dormand_prince45::<f64>(),
         linear_problem::<f64>()
     );
 
     ode_test!(
         solve_system_two_vars_erk1,
-        DEAlgorithm::ExplicitRungeKutta1,
+        erk1::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_erk2,
-        DEAlgorithm::ExplicitRungeKutta2,
+        erk2::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_erk3,
-        DEAlgorithm::ExplicitRungeKutta3,
+        erk3::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_erk4,
-        DEAlgorithm::ExplicitRungeKutta4,
+        erk4::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_erk5,
-        DEAlgorithm::ExplicitRungeKutta5,
+        erk5::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_fehlberg45,
-        DEAlgorithm::Fehlberg45,
+        fehlberg45::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_dopri54,
-        DEAlgorithm::DormandPrince45,
+        dormand_prince45::<f64>(),
         oscillator_problem::<f64>()
     );
 
     macro_rules! adaptive_test {
-        ($name:ident, $alg:expr, $setup:expr, $atol:expr, $rtol:expr) => {
+        ($name:ident, $tableau:expr, $setup:expr, $atol:expr, $rtol:expr) => {
             #[test]
             fn $name() {
                 let (prob, reference) = $setup;
-                let sol = solve_adaptive(&prob, $alg, 0.01, $atol, $rtol).unwrap();
+                let sol = solve_adaptive(&prob, &$tableau, 0.01, $atol, $rtol).unwrap();
                 let n_t = sol.t.len();
                 for (i, ref_traj) in reference.iter().enumerate() {
                     let computed_last = sol.u.row(i)[n_t - 1];
@@ -749,42 +730,42 @@ mod tests {
 
     adaptive_test!(
         solve_adaptive_fehlberg45_f32,
-        DEAlgorithm::Fehlberg45,
+        fehlberg45::<f32>(),
         linear_problem::<f32>(),
         1e-4f32,
         1e-4f32
     );
     adaptive_test!(
         solve_adaptive_dopri54_f32,
-        DEAlgorithm::DormandPrince45,
+        dormand_prince45::<f32>(),
         linear_problem::<f32>(),
         1e-4f32,
         1e-4f32
     );
     adaptive_test!(
         solve_adaptive_fehlberg45_f64,
-        DEAlgorithm::Fehlberg45,
+        fehlberg45::<f64>(),
         linear_problem::<f64>(),
         1e-8f64,
         1e-8f64
     );
     adaptive_test!(
         solve_adaptive_dopri54_f64,
-        DEAlgorithm::DormandPrince45,
+        dormand_prince45::<f64>(),
         linear_problem::<f64>(),
         1e-8f64,
         1e-8f64
     );
     adaptive_test!(
         solve_adaptive_fehlberg45_osc,
-        DEAlgorithm::Fehlberg45,
+        fehlberg45::<f64>(),
         oscillator_problem::<f64>(),
         1e-6f64,
         1e-6f64
     );
     adaptive_test!(
         solve_adaptive_dopri54_osc,
-        DEAlgorithm::DormandPrince45,
+        dormand_prince45::<f64>(),
         oscillator_problem::<f64>(),
         1e-6f64,
         1e-6f64
