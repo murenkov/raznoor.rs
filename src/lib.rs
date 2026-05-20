@@ -32,6 +32,8 @@ pub enum SolverError {
     UnsupportedStageCount(usize),
     /// No algorithm was specified.
     NoAlgorithm,
+    /// Adaptive step-size control is not supported for the given algorithm.
+    AdaptiveNotSupported,
 }
 
 impl std::fmt::Display for SolverError {
@@ -41,6 +43,9 @@ impl std::fmt::Display for SolverError {
                 write!(f, "unsupported Runge-Kutta stage count: {n}")
             }
             SolverError::NoAlgorithm => write!(f, "no algorithm specified"),
+            SolverError::AdaptiveNotSupported => {
+                write!(f, "adaptive stepping not supported for this algorithm")
+            }
         }
     }
 }
@@ -53,10 +58,17 @@ type Matrix<T> = Array2<T>;
 struct ButcherTableau<T: Float> {
     a: Matrix<T>,
     b: Array1<T>,
+    /// Lower-order embedded coefficients for error estimation (adaptive stepping).
+    b_embedded: Array1<T>,
     c: Array1<T>,
 }
 
-fn build_tableau<T>(a_coeffs: &[&[f64]], b_coeffs: &[f64], c_coeffs: &[f64]) -> ButcherTableau<T>
+fn build_tableau<T>(
+    a_coeffs: &[&[f64]],
+    b_coeffs: &[f64],
+    b_embedded_coeffs: &[f64],
+    c_coeffs: &[f64],
+) -> ButcherTableau<T>
 where
     T: Float + FromPrimitive,
 {
@@ -75,9 +87,15 @@ where
         .expect("Butcher tableau A matrix is square");
 
     let b: Array1<T> = b_coeffs.iter().map(|&x| cast(x)).collect();
+    let b_embedded: Array1<T> = b_embedded_coeffs.iter().map(|&x| cast(x)).collect();
     let c: Array1<T> = c_coeffs.iter().map(|&x| cast(x)).collect();
 
-    ButcherTableau { a, b, c }
+    ButcherTableau {
+        a,
+        b,
+        b_embedded,
+        c,
+    }
 }
 
 fn butcher_tableau<T>(alg: &DEAlgorithm) -> Result<ButcherTableau<T>, SolverError>
@@ -85,14 +103,16 @@ where
     T: Float + FromPrimitive,
 {
     match alg {
-        DEAlgorithm::ExplicitRungeKutta1 => Ok(build_tableau(&[&[0.0]], &[1.0], &[0.0])),
+        DEAlgorithm::ExplicitRungeKutta1 => Ok(build_tableau(&[&[0.0]], &[1.0], &[1.0], &[0.0])),
         DEAlgorithm::ExplicitRungeKutta2 => Ok(build_tableau(
             &[&[0.0, 0.0], &[1.0, 0.0]],
+            &[0.5, 0.5],
             &[0.5, 0.5],
             &[0.0, 1.0],
         )),
         DEAlgorithm::ExplicitRungeKutta3 => Ok(build_tableau(
             &[&[0.0, 0.0, 0.0], &[0.5, 0.0, 0.0], &[-1.0, 2.0, 0.0]],
+            &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
             &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
             &[0.0, 0.5, 1.0],
         )),
@@ -103,6 +123,7 @@ where
                 &[0.0, 0.5, 0.0, 0.0],
                 &[0.0, 0.0, 1.0, 0.0],
             ],
+            &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
             &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
             &[0.0, 0.5, 0.5, 1.0],
         )),
@@ -121,6 +142,14 @@ where
                     8.0 / 7.0,
                     0.0,
                 ],
+            ],
+            &[
+                7.0 / 90.0,
+                0.0,
+                32.0 / 90.0,
+                12.0 / 90.0,
+                32.0 / 90.0,
+                7.0 / 90.0,
             ],
             &[
                 7.0 / 90.0,
@@ -170,6 +199,14 @@ where
                 -9.0 / 50.0,
                 2.0 / 55.0,
             ],
+            &[
+                25.0 / 216.0,
+                0.0,
+                1408.0 / 2565.0,
+                2197.0 / 4104.0,
+                -1.0 / 5.0,
+                0.0,
+            ],
             &[0.0, 1.0 / 4.0, 3.0 / 8.0, 12.0 / 13.0, 1.0, 1.0 / 2.0],
         )),
         DEAlgorithm::DormandPrince45 => Ok(build_tableau(
@@ -214,6 +251,15 @@ where
                 -2187.0 / 6784.0,
                 11.0 / 84.0,
                 0.0,
+            ],
+            &[
+                5179.0 / 57600.0,
+                0.0,
+                7571.0 / 16695.0,
+                393.0 / 640.0,
+                -92097.0 / 339200.0,
+                187.0 / 2100.0,
+                1.0 / 40.0,
             ],
             &[0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0],
         )),
@@ -322,6 +368,156 @@ pub enum DEAlgorithm {
     Fehlberg45,
     /// Dormand-Prince embedded 4(5) method (DOPRI54).
     DormandPrince45,
+}
+
+/// Returns `true` if the algorithm is an embedded Runge-Kutta pair supporting adaptive stepping.
+fn is_embedded_algorithm(alg: &DEAlgorithm) -> bool {
+    matches!(alg, DEAlgorithm::Fehlberg45 | DEAlgorithm::DormandPrince45)
+}
+
+/// Solve an ODE problem using variable step-size (adaptive) integration.
+///
+/// Uses an embedded Runge-Kutta pair (Fehlberg45 or DormandPrince45) to estimate the
+/// local truncation error and adjust the step size accordingly with an I-controller.
+///
+/// # Parameters
+/// * `prob` — The ODE problem definition.
+/// * `alg` — An embedded Runge-Kutta algorithm (Fehlberg45 or DormandPrince45).
+/// * `h0` — Initial step size guess.
+/// * `atol` — Absolute tolerance for the error per step.
+/// * `rtol` — Relative tolerance for the error per step.
+///
+/// # Returns
+/// `Ok(ODESolution<T>)` containing the time grid and state trajectories, or
+/// `Err(SolverError)` if the algorithm does not support adaptive stepping.
+pub fn solve_adaptive<T, F>(
+    prob: &ODEProblem<T, F>,
+    alg: DEAlgorithm,
+    h0: T,
+    atol: T,
+    rtol: T,
+) -> Result<ODESolution<T>, SolverError>
+where
+    T: Float + FromPrimitive,
+    F: Fn(T, &Array1<T>) -> Array1<T>,
+{
+    if !is_embedded_algorithm(&alg) {
+        return Err(SolverError::AdaptiveNotSupported);
+    }
+
+    let tableau = butcher_tableau::<T>(&alg)?;
+    let n = prob.u0.len();
+    let t0 = prob.tspan.0;
+    let tf = prob.tspan.1;
+    let direction = if tf >= t0 { T::one() } else { -T::one() };
+    let stages = tableau.c.len();
+
+    let safety = T::from_f64(0.9).unwrap();
+    let max_factor = T::from_f64(5.0).unwrap();
+    let min_factor = T::from_f64(0.2).unwrap();
+    let max_steps = 10_000_000;
+    let order_p1 = T::from_usize(5).unwrap();
+
+    let mut ts: Vec<T> = Vec::new();
+    let mut us: Vec<Array1<T>> = Vec::new();
+
+    let mut t = t0;
+    let mut y = prob.u0.clone();
+    let mut h = h0.abs() * direction;
+
+    ts.push(t);
+    us.push(y.clone());
+
+    let f = &prob.f;
+    let mut ks = vec![Array1::<T>::zeros(n); stages];
+
+    for _step in 0..max_steps {
+        if (t - tf).abs() <= T::epsilon() {
+            break;
+        }
+
+        if (t + h - tf).abs() > (tf - t).abs() {
+            h = tf - t;
+        }
+
+        for m in 0..stages {
+            let mut arg = y.clone();
+            for (j, k) in ks.iter().enumerate() {
+                let coeff = tableau.a[[m, j]];
+                if coeff != T::zero() {
+                    ndarray::Zip::from(&mut arg)
+                        .and(k)
+                        .for_each(|a, &kv| *a = *a + h * coeff * kv);
+                }
+            }
+            ks[m] = f(t + tableau.c[m] * h, &arg);
+        }
+
+        let mut err_diff = Array1::<T>::zeros(n);
+        let mut update = Array1::<T>::zeros(n);
+        for (m, k) in ks.iter().enumerate() {
+            let coeff = tableau.b[m];
+            let embedded = tableau.b_embedded[m];
+            if coeff != T::zero() || embedded != T::zero() {
+                let d = coeff - embedded;
+                ndarray::Zip::from(&mut err_diff)
+                    .and(k)
+                    .for_each(|e, &kv| *e = *e + d * kv);
+            }
+            if coeff != T::zero() {
+                ndarray::Zip::from(&mut update)
+                    .and(k)
+                    .for_each(|u, &kv| *u = *u + coeff * kv);
+            }
+        }
+
+        let y_new = ndarray::Zip::from(&y)
+            .and(&update)
+            .map_collect(|&yv, &up| yv + h * up);
+
+        let mut err_sq = T::zero();
+        for i in 0..n {
+            let e_i = (h * err_diff[i]).abs();
+            let scale = atol + rtol * y_new[i].abs();
+            let ratio = e_i / scale;
+            err_sq = err_sq + ratio * ratio;
+        }
+        let err = (err_sq / T::from_usize(n).unwrap()).sqrt();
+
+        let fac = if err <= T::zero() {
+            max_factor
+        } else {
+            let sf = safety * (T::one() / (err + T::epsilon())).powf(T::one() / order_p1);
+            if sf > max_factor {
+                max_factor
+            } else if sf < min_factor {
+                min_factor
+            } else {
+                sf
+            }
+        };
+
+        if err <= T::one() {
+            t = t + h;
+            y = y_new;
+            ts.push(t);
+            us.push(y.clone());
+            h = h * fac;
+        } else {
+            h = h * fac;
+        }
+    }
+
+    let n_times = ts.len();
+    let mut u_arr = Array2::<T>::zeros((n, n_times));
+    for (i, state) in us.iter().enumerate() {
+        u_arr.column_mut(i).assign(state);
+    }
+
+    Ok(ODESolution {
+        t: ts.into(),
+        u: u_arr,
+    })
 }
 
 /// Solve an ODE problem using the specified algorithm and step size.
@@ -530,5 +726,67 @@ mod tests {
         solve_system_two_vars_dopri54,
         DEAlgorithm::DormandPrince45,
         oscillator_problem::<f64>()
+    );
+
+    macro_rules! adaptive_test {
+        ($name:ident, $alg:expr, $setup:expr, $atol:expr, $rtol:expr) => {
+            #[test]
+            fn $name() {
+                let (prob, reference) = $setup;
+                let sol = solve_adaptive(&prob, $alg, 0.01, $atol, $rtol).unwrap();
+                let n_t = sol.t.len();
+                for (i, ref_traj) in reference.iter().enumerate() {
+                    let computed_last = sol.u.row(i)[n_t - 1];
+                    let ref_last = ref_traj[ref_traj.len() - 1];
+                    assert!(
+                        (computed_last - ref_last).abs() <= 0.01,
+                        "final state mismatch for variable {i}: computed={computed_last}, ref={ref_last}"
+                    );
+                }
+            }
+        };
+    }
+
+    adaptive_test!(
+        solve_adaptive_fehlberg45_f32,
+        DEAlgorithm::Fehlberg45,
+        linear_problem::<f32>(),
+        1e-4f32,
+        1e-4f32
+    );
+    adaptive_test!(
+        solve_adaptive_dopri54_f32,
+        DEAlgorithm::DormandPrince45,
+        linear_problem::<f32>(),
+        1e-4f32,
+        1e-4f32
+    );
+    adaptive_test!(
+        solve_adaptive_fehlberg45_f64,
+        DEAlgorithm::Fehlberg45,
+        linear_problem::<f64>(),
+        1e-8f64,
+        1e-8f64
+    );
+    adaptive_test!(
+        solve_adaptive_dopri54_f64,
+        DEAlgorithm::DormandPrince45,
+        linear_problem::<f64>(),
+        1e-8f64,
+        1e-8f64
+    );
+    adaptive_test!(
+        solve_adaptive_fehlberg45_osc,
+        DEAlgorithm::Fehlberg45,
+        oscillator_problem::<f64>(),
+        1e-6f64,
+        1e-6f64
+    );
+    adaptive_test!(
+        solve_adaptive_dopri54_osc,
+        DEAlgorithm::DormandPrince45,
+        oscillator_problem::<f64>(),
+        1e-6f64,
+        1e-6f64
     );
 }
