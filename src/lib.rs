@@ -1,21 +1,25 @@
 #![warn(missing_docs)]
 
-//! A Rust library for solving ordinary differential equations (ODEs) using explicit Runge-Kutta methods.
+//! Explicit Runge-Kutta ODE solver for scalar and system initial value problems.
 
-use ndarray::{ArrayBase, OwnedRepr};
-use ndarray::{arr1, arr2};
+use ndarray::{Array1, Array2, arr1, arr2};
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
 /// Utility functions for the ODE solver.
 pub mod utils;
 
-/// The solution of an ODE, containing time points and corresponding state vectors.
+/// The solution of an ODE system, containing time points and state trajectories.
+///
+/// # Fields
+/// * `t` — Time points at which the solution was evaluated.
+/// * `u` — State trajectories as a matrix of shape `(n_vars, n_times)` — each row is one
+///   variable's trajectory across all time points.
 pub struct ODESolution<T> {
     /// Time points at which the solution was evaluated.
     pub t: Box<[T]>,
-    /// State vectors at each time point (one vector per dependent variable).
-    pub u: Box<[Box<[T]>]>,
+    /// State trajectories as a matrix of shape `(n_vars, n_times)`.
+    pub u: Array2<T>,
 }
 
 /// Errors that can occur during ODE solving.
@@ -43,14 +47,13 @@ impl std::fmt::Display for SolverError {
 
 impl std::error::Error for SolverError {}
 
-type Vector<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 1]>>;
-type Matrix<T> = ArrayBase<OwnedRepr<T>, ndarray::Dim<[usize; 2]>>;
+type Matrix<T> = Array2<T>;
 
 #[derive(Debug)]
 struct ButcherTableau<T: Float> {
     a: Matrix<T>,
-    b: Vector<T>,
-    c: Vector<T>,
+    b: Array1<T>,
+    c: Array1<T>,
 }
 
 fn runge_kutta_matrix<T>(size: usize) -> Matrix<T>
@@ -109,60 +112,84 @@ where
     }
 }
 
-fn stages_coefficients<T, F>(ks: &mut [T], bt: &ButcherTableau<T>, f: F, x: T, y: T, h: T)
-where
-    T: Float + FromPrimitive,
-    F: Fn(T, T) -> T,
-{
-    debug_assert_eq!(
-        ks.len(),
-        bt.a.nrows(),
-        "ks length must match the Butcher tableau size"
-    );
-    for m in 0..ks.len() {
-        let mut sum = T::zero();
-        for (i, &k) in ks.iter().enumerate() {
-            sum = sum + bt.a[[m, i]] * k;
-        }
-        ks[m] = f(x + bt.c[m] * h, y + h * sum);
-    }
-}
-
-fn runge_kutta_n<T, F>(
-    ys: &mut [T],
-    f: F,
+/// Perform fixed-step explicit Runge-Kutta integration for a system of ODEs.
+///
+/// # Parameters
+/// * `xs` — Time grid points (must contain at least two elements).
+/// * `y0` — Initial state vector of length `n`.
+/// * `stages` — Number of Runge-Kutta stages (must be 1, 2, or 4).
+/// * `f` — The right-hand side function `f(t, u)` returning the derivative vector.
+///
+/// # Returns
+/// A matrix of shape `(n, len(xs))` where each column is the state at the corresponding time
+/// point, or `Err(SolverError)` if the stage count is unsupported.
+fn runge_kutta_system<T, F>(
     xs: &[T],
-    y_0: T,
+    y0: &Array1<T>,
     stages: usize,
-) -> Result<(), SolverError>
+    f: &F,
+) -> Result<Array2<T>, SolverError>
 where
     T: Float + FromPrimitive,
-    F: Fn(T, T) -> T,
+    F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    ys[0] = y_0;
-
+    let n = y0.len();
+    let n_steps = xs.len();
     let bt = butcher_tableau::<T>(stages)?;
-    let mut ks = vec![T::zero(); stages];
-    for (i, x) in xs.windows(2).enumerate() {
-        let h = x[1] - x[0];
-        stages_coefficients(&mut ks, &bt, &f, x[0], ys[i], h);
 
-        let mut s = T::zero();
-        for (m, &k) in ks.iter().enumerate() {
-            s = s + bt.b[m] * k;
+    let mut u = Array2::<T>::zeros((n, n_steps));
+    u.column_mut(0).assign(y0);
+
+    let mut ks = vec![Array1::<T>::zeros(n); stages];
+
+    for i in 0..n_steps - 1 {
+        let h = xs[i + 1] - xs[i];
+
+        for m in 0..stages {
+            let mut arg = u.column(i).to_owned();
+            for (j, k) in ks.iter().enumerate() {
+                let coeff = bt.a[[m, j]];
+                if coeff != T::zero() {
+                    ndarray::Zip::from(&mut arg)
+                        .and(k)
+                        .for_each(|a, &kv| *a = *a + h * coeff * kv);
+                }
+            }
+            ks[m] = f(xs[i] + bt.c[m] * h, &arg);
         }
 
-        ys[i + 1] = ys[i] + s * h;
+        let mut update = Array1::<T>::zeros(n);
+        for (m, k) in ks.iter().enumerate() {
+            let coeff = bt.b[m];
+            if coeff != T::zero() {
+                ndarray::Zip::from(&mut update)
+                    .and(k)
+                    .for_each(|u, &kv| *u = *u + coeff * kv);
+            }
+        }
+
+        let y_i = u.column(i).to_owned();
+        u.column_mut(i + 1).assign(
+            &ndarray::Zip::from(&y_i)
+                .and(&update)
+                .map_collect(|&y, &up| y + h * up),
+        );
     }
-    Ok(())
+
+    Ok(u)
 }
 
-/// An initial value problem for an ordinary differential equation.
-pub struct ODEProblem<T: Float, F: Fn(T, T) -> T> {
-    /// The right-hand side function `f(t, y)` defining the ODE `y' = f(t, y)`.
+/// An initial value problem for a system of ordinary differential equations.
+///
+/// # Fields
+/// * `f` — The right-hand side function `f(t, u)` defining the ODE `u' = f(t, u)`.
+/// * `u0` — The initial condition vector `u(t0)`.
+/// * `tspan` — The time span `(t0, t1)` over which to solve.
+pub struct ODEProblem<T: Float, F> {
+    /// The right-hand side function `f(t, u)` defining the ODE `u' = f(t, u)`.
     pub f: F,
-    /// The initial condition `y(t0)`.
-    pub u0: T,
+    /// The initial condition vector `u(t0)`.
+    pub u0: Array1<T>,
     /// The time span `(t0, t1)` over which to solve.
     pub tspan: (T, T),
 }
@@ -189,12 +216,14 @@ pub enum DEAlgorithm {
 /// Solve an ODE problem using the specified algorithm and step size.
 ///
 /// # Parameters
-/// * `prob` — The ODE problem definition containing the right-hand side, initial condition, and time span.
+/// * `prob` — The ODE problem definition containing the right-hand side, initial condition,
+///   and time span.
 /// * `alg` — The Runge-Kutta algorithm variant to use for integration.
 /// * `dt` — The fixed step size for time-stepping.
 ///
 /// # Returns
-/// `Ok(ODESolution<T>)` containing the time grid and computed states, or `Err(SolverError)` if the algorithm configuration is invalid.
+/// `Ok(ODESolution<T>)` containing the time grid and state trajectories, or
+/// `Err(SolverError)` if the algorithm configuration is invalid.
 pub fn solve<T, F>(
     prob: &ODEProblem<T, F>,
     alg: DEAlgorithm,
@@ -202,7 +231,7 @@ pub fn solve<T, F>(
 ) -> Result<ODESolution<T>, SolverError>
 where
     T: Float + FromPrimitive,
-    F: Fn(T, T) -> T,
+    F: Fn(T, &Array1<T>) -> Array1<T>,
 {
     let n_steps =
         num_traits::cast::<T, usize>(((prob.tspan.1 - prob.tspan.0) / dt).floor()).unwrap_or(0);
@@ -212,22 +241,22 @@ where
         xs.push(prob.tspan.0 + dt * T::from_usize(i).expect("step index fits in the numeric type"));
     }
     xs.push(prob.tspan.1);
-    let xs: Box<[T]> = xs.into();
 
-    let mut ys = vec![T::zero(); xs.len()];
-    match alg {
-        DEAlgorithm::ExplicitRungeKutta1 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 1)?,
-        DEAlgorithm::ExplicitRungeKutta2 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 2)?,
-        DEAlgorithm::ExplicitRungeKutta4 => runge_kutta_n(&mut ys, &prob.f, &xs, prob.u0, 4)?,
-    }
-    let us: Box<[Box<[T]>]> = Box::new([ys.into()]);
+    let stages = match alg {
+        DEAlgorithm::ExplicitRungeKutta1 => 1,
+        DEAlgorithm::ExplicitRungeKutta2 => 2,
+        DEAlgorithm::ExplicitRungeKutta4 => 4,
+    };
 
-    Ok(ODESolution::<T> { t: xs, u: us })
+    let u = runge_kutta_system(&xs, &prob.u0, stages, &prob.f)?;
+
+    Ok(ODESolution::<T> { t: xs.into(), u })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ndarray::array;
 
     const ALL_ALGORITHMS: &[DEAlgorithm] = &[
         DEAlgorithm::ExplicitRungeKutta1,
@@ -237,41 +266,67 @@ mod tests {
 
     #[test]
     fn solve_f32() {
-        let fun = |x: f32, y: f32| -> f32 { 2.0 * x + y };
+        let fun = |x: f32, y: &Array1<f32>| -> Array1<f32> { array![2.0 * x + y[0]] };
         let prob = ODEProblem {
             f: fun,
-            u0: 1.0,
+            u0: array![1.0],
             tspan: (1.0, 1.1),
         };
 
         for alg in ALL_ALGORITHMS {
-            let ys = solve(&prob, alg.clone(), 0.01).unwrap();
+            let sol = solve(&prob, alg.clone(), 0.01).unwrap();
             let ys_ref: Vec<f32> = (0..11)
                 .map(|x| 1.0 + (x as f32) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
                 .collect();
-            let res = utils::residual(&ys.u[0], &ys_ref).unwrap();
+            let computed = sol.u.row(0);
+            let res = utils::residual(computed.as_slice().unwrap(), &ys_ref).unwrap();
             assert!(res <= 0.01);
         }
     }
 
     #[test]
     fn solve_f64() {
-        let fun = |x: f64, y: f64| -> f64 { 2.0 * x + y };
+        let fun = |x: f64, y: &Array1<f64>| -> Array1<f64> { array![2.0 * x + y[0]] };
         let prob = ODEProblem {
             f: fun,
-            u0: 1.0,
+            u0: array![1.0],
             tspan: (1.0, 1.1),
         };
 
         for alg in ALL_ALGORITHMS {
-            let ys = solve(&prob, alg.clone(), 0.01).unwrap();
+            let sol = solve(&prob, alg.clone(), 0.01).unwrap();
             let ys_ref: Vec<f64> = (0..11)
                 .map(|x| 1.0 + (x as f64) * 0.01)
                 .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
                 .collect();
-            let res = utils::residual(&ys.u[0], &ys_ref).unwrap();
+            let computed = sol.u.row(0);
+            let res = utils::residual(computed.as_slice().unwrap(), &ys_ref).unwrap();
             assert!(res <= 0.01);
+        }
+    }
+
+    #[test]
+    fn solve_system_two_vars() {
+        let fun = |_x: f64, y: &Array1<f64>| -> Array1<f64> { array![y[1], -y[0]] };
+        let prob = ODEProblem {
+            f: fun,
+            u0: array![0.0, 1.0],
+            tspan: (0.0, std::f64::consts::FRAC_PI_2),
+        };
+
+        for alg in ALL_ALGORITHMS {
+            let sol = solve(&prob, alg.clone(), 0.01).unwrap();
+            let ys0_ref: Vec<f64> = sol.t.iter().map(|&t| t.sin()).collect();
+            let ys1_ref: Vec<f64> = sol.t.iter().map(|&t| t.cos()).collect();
+
+            let computed0 = sol.u.row(0);
+            let res0 = utils::residual(computed0.as_slice().unwrap(), &ys0_ref).unwrap();
+            assert!(res0 <= 0.01);
+
+            let computed1 = sol.u.row(1);
+            let res1 = utils::residual(computed1.as_slice().unwrap(), &ys1_ref).unwrap();
+            assert!(res1 <= 0.01);
         }
     }
 }
