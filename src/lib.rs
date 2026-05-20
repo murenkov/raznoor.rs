@@ -363,75 +363,172 @@ where
 mod tests {
     use super::*;
     use ndarray::array;
+    use num_traits::FromPrimitive;
 
-    macro_rules! scalar_ode_test {
-        ($name:ident, $ty:ty, $alg:expr) => {
+    type ProblemSetup<T> = (ODEProblem<T, fn(T, &Array1<T>) -> Array1<T>>, Vec<Vec<T>>);
+
+    fn linear_problem<T: Float + FromPrimitive>() -> ProblemSetup<T> {
+        let f: fn(T, &Array1<T>) -> Array1<T> =
+            |x: T, y: &Array1<T>| array![T::from_f64(2.0).unwrap() * x + y[0]];
+        let prob = ODEProblem {
+            f,
+            u0: array![T::from_f64(1.0).unwrap()],
+            tspan: (T::from_f64(1.0).unwrap(), T::from_f64(1.1).unwrap()),
+        };
+        let ys: Vec<T> = (0..11)
+            .map(|i| {
+                T::from_f64(1.0).unwrap()
+                    + T::from_f64(i as f64).unwrap() * T::from_f64(0.01).unwrap()
+            })
+            .map(|x| {
+                T::from_f64(5.0).unwrap() * (x - T::from_f64(1.0).unwrap()).exp()
+                    - T::from_f64(2.0).unwrap() * x
+                    - T::from_f64(2.0).unwrap()
+            })
+            .collect();
+        (prob, vec![ys])
+    }
+
+    fn oscillator_problem<T: Float + FromPrimitive>() -> ProblemSetup<T> {
+        let half_pi = T::from_f64(std::f64::consts::FRAC_PI_2).unwrap();
+        let dt = T::from_f64(0.01).unwrap();
+        let n_steps = num_traits::cast::<T, usize>((half_pi / dt).floor()).unwrap_or(0);
+        let f: fn(T, &Array1<T>) -> Array1<T> = |_x: T, y: &Array1<T>| array![y[1], -y[0]];
+        let prob = ODEProblem {
+            f,
+            u0: array![T::from_f64(0.0).unwrap(), T::from_f64(1.0).unwrap()],
+            tspan: (T::from_f64(0.0).unwrap(), half_pi),
+        };
+        let mut xs: Vec<T> = Vec::with_capacity(n_steps + 2);
+        xs.push(T::from_f64(0.0).unwrap());
+        for i in 1..n_steps {
+            xs.push(dt * T::from_usize(i).unwrap());
+        }
+        xs.push(half_pi);
+        let ys0: Vec<T> = xs.iter().map(|&t| t.sin()).collect();
+        let ys1: Vec<T> = xs.iter().map(|&t| t.cos()).collect();
+        (prob, vec![ys0, ys1])
+    }
+
+    macro_rules! ode_test {
+        ($name:ident, $alg:expr, $setup:expr) => {
             #[test]
             fn $name() {
-                let fun = |x: $ty, y: &Array1<$ty>| -> Array1<$ty> { array![2.0 * x + y[0]] };
-                let prob = ODEProblem {
-                    f: fun,
-                    u0: array![1.0],
-                    tspan: (1.0, 1.1),
-                };
+                let (prob, reference) = $setup;
                 let sol = solve(&prob, $alg, 0.01).unwrap();
-                let ys_ref: Vec<$ty> = (0..11)
-                    .map(|i| 1.0 + (i as $ty) * 0.01)
-                    .map(|x| 5.0 * (x - 1.0).exp() - 2.0 * x - 2.0)
-                    .collect();
-                let computed = sol.u.row(0);
-                let res = utils::residual(computed.as_slice().unwrap(), &ys_ref).unwrap();
-                assert!(res <= 0.01);
+                for (i, ref_traj) in reference.iter().enumerate() {
+                    let computed = sol.u.row(i);
+                    let res = utils::residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+                    assert!(res <= 0.01);
+                }
             }
         };
     }
 
-    scalar_ode_test!(solve_erk1_f32, f32, DEAlgorithm::ExplicitRungeKutta1);
-    scalar_ode_test!(solve_erk2_f32, f32, DEAlgorithm::ExplicitRungeKutta2);
-    scalar_ode_test!(solve_erk3_f32, f32, DEAlgorithm::ExplicitRungeKutta3);
-    scalar_ode_test!(solve_erk4_f32, f32, DEAlgorithm::ExplicitRungeKutta4);
-    scalar_ode_test!(solve_erk5_f32, f32, DEAlgorithm::ExplicitRungeKutta5);
-    scalar_ode_test!(solve_fehlberg45_f32, f32, DEAlgorithm::Fehlberg45);
-    scalar_ode_test!(solve_dopri54_f32, f32, DEAlgorithm::DormandPrince45);
-    scalar_ode_test!(solve_erk1_f64, f64, DEAlgorithm::ExplicitRungeKutta1);
-    scalar_ode_test!(solve_erk2_f64, f64, DEAlgorithm::ExplicitRungeKutta2);
-    scalar_ode_test!(solve_erk3_f64, f64, DEAlgorithm::ExplicitRungeKutta3);
-    scalar_ode_test!(solve_erk4_f64, f64, DEAlgorithm::ExplicitRungeKutta4);
-    scalar_ode_test!(solve_erk5_f64, f64, DEAlgorithm::ExplicitRungeKutta5);
-    scalar_ode_test!(solve_fehlberg45_f64, f64, DEAlgorithm::Fehlberg45);
-    scalar_ode_test!(solve_dopri54_f64, f64, DEAlgorithm::DormandPrince45);
+    ode_test!(
+        solve_erk1_f32,
+        DEAlgorithm::ExplicitRungeKutta1,
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_erk2_f32,
+        DEAlgorithm::ExplicitRungeKutta2,
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_erk3_f32,
+        DEAlgorithm::ExplicitRungeKutta3,
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_erk4_f32,
+        DEAlgorithm::ExplicitRungeKutta4,
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_erk5_f32,
+        DEAlgorithm::ExplicitRungeKutta5,
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_fehlberg45_f32,
+        DEAlgorithm::Fehlberg45,
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_dopri54_f32,
+        DEAlgorithm::DormandPrince45,
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_erk1_f64,
+        DEAlgorithm::ExplicitRungeKutta1,
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_erk2_f64,
+        DEAlgorithm::ExplicitRungeKutta2,
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_erk3_f64,
+        DEAlgorithm::ExplicitRungeKutta3,
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_erk4_f64,
+        DEAlgorithm::ExplicitRungeKutta4,
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_erk5_f64,
+        DEAlgorithm::ExplicitRungeKutta5,
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_fehlberg45_f64,
+        DEAlgorithm::Fehlberg45,
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_dopri54_f64,
+        DEAlgorithm::DormandPrince45,
+        linear_problem::<f64>()
+    );
 
-    macro_rules! system_ode_test {
-        ($name:ident, $alg:expr) => {
-            #[test]
-            fn $name() {
-                let fun = |_x: f64, y: &Array1<f64>| -> Array1<f64> { array![y[1], -y[0]] };
-                let prob = ODEProblem {
-                    f: fun,
-                    u0: array![0.0, 1.0],
-                    tspan: (0.0, std::f64::consts::FRAC_PI_2),
-                };
-
-                let sol = solve(&prob, $alg, 0.01).unwrap();
-                let ys0_ref: Vec<f64> = sol.t.iter().map(|&t| t.sin()).collect();
-                let ys1_ref: Vec<f64> = sol.t.iter().map(|&t| t.cos()).collect();
-
-                let computed0 = sol.u.row(0);
-                let res0 = utils::residual(computed0.as_slice().unwrap(), &ys0_ref).unwrap();
-                assert!(res0 <= 0.01);
-
-                let computed1 = sol.u.row(1);
-                let res1 = utils::residual(computed1.as_slice().unwrap(), &ys1_ref).unwrap();
-                assert!(res1 <= 0.01);
-            }
-        };
-    }
-
-    system_ode_test!(solve_system_two_vars_erk1, DEAlgorithm::ExplicitRungeKutta1);
-    system_ode_test!(solve_system_two_vars_erk2, DEAlgorithm::ExplicitRungeKutta2);
-    system_ode_test!(solve_system_two_vars_erk3, DEAlgorithm::ExplicitRungeKutta3);
-    system_ode_test!(solve_system_two_vars_erk4, DEAlgorithm::ExplicitRungeKutta4);
-    system_ode_test!(solve_system_two_vars_erk5, DEAlgorithm::ExplicitRungeKutta5);
-    system_ode_test!(solve_system_two_vars_fehlberg45, DEAlgorithm::Fehlberg45);
-    system_ode_test!(solve_system_two_vars_dopri54, DEAlgorithm::DormandPrince45);
+    ode_test!(
+        solve_system_two_vars_erk1,
+        DEAlgorithm::ExplicitRungeKutta1,
+        oscillator_problem::<f64>()
+    );
+    ode_test!(
+        solve_system_two_vars_erk2,
+        DEAlgorithm::ExplicitRungeKutta2,
+        oscillator_problem::<f64>()
+    );
+    ode_test!(
+        solve_system_two_vars_erk3,
+        DEAlgorithm::ExplicitRungeKutta3,
+        oscillator_problem::<f64>()
+    );
+    ode_test!(
+        solve_system_two_vars_erk4,
+        DEAlgorithm::ExplicitRungeKutta4,
+        oscillator_problem::<f64>()
+    );
+    ode_test!(
+        solve_system_two_vars_erk5,
+        DEAlgorithm::ExplicitRungeKutta5,
+        oscillator_problem::<f64>()
+    );
+    ode_test!(
+        solve_system_two_vars_fehlberg45,
+        DEAlgorithm::Fehlberg45,
+        oscillator_problem::<f64>()
+    );
+    ode_test!(
+        solve_system_two_vars_dopri54,
+        DEAlgorithm::DormandPrince45,
+        oscillator_problem::<f64>()
+    );
 }
