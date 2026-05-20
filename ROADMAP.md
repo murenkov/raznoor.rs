@@ -2,7 +2,7 @@
 
 ## v0.2
 
-- [ ] Support for systems of ODEs (vector-valued right-hand sides)
+- [x] Support for systems of ODEs (vector-valued right-hand sides)
 - [ ] Additional Runge-Kutta methods (e.g. RK3, RK5, Fehlberg, Dormand–Prince)
 - [ ] Variable step-size (adaptive) integration
 - [ ] Event detection (root-finding during integration)
