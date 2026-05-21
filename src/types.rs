@@ -20,10 +20,6 @@ pub struct ODESolution<T> {
 #[derive(Debug, PartialEq)]
 #[non_exhaustive]
 pub enum SolverError {
-    /// The requested number of Runge-Kutta stages is not supported.
-    UnsupportedStageCount(usize),
-    /// No algorithm was specified.
-    NoAlgorithm,
     /// Adaptive step-size control is not supported for the given algorithm.
     AdaptiveNotSupported,
 }
@@ -31,10 +27,6 @@ pub enum SolverError {
 impl std::fmt::Display for SolverError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SolverError::UnsupportedStageCount(n) => {
-                write!(f, "unsupported Runge-Kutta stage count: {n}")
-            }
-            SolverError::NoAlgorithm => write!(f, "no algorithm specified"),
             SolverError::AdaptiveNotSupported => {
                 write!(f, "adaptive stepping not supported for this algorithm")
             }

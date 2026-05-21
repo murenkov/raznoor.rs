@@ -5,41 +5,31 @@ use num_traits::FromPrimitive;
 use crate::butcher::ButcherTableau;
 use crate::types::{ODEProblem, ODESolution, SolverError};
 
-/// Perform fixed-step explicit Runge-Kutta integration for a system of ODEs.
+/// Trait for ODE system solvers.
 ///
-/// # Parameters
-/// * `xs` — Time grid points (must contain at least two elements).
-/// * `y0` — Initial state vector of length `n`.
-/// * `tableau` — The Butcher tableau defining the Runge-Kutta method.
-/// * `f` — The right-hand side function `f(t, u)` returning the derivative vector.
-///
-/// # Returns
-/// A matrix of shape `(n, len(xs))` where each column is the state at the corresponding time
-/// point.
-fn runge_kutta_system<T, F>(
-    xs: &[T],
-    y0: &Array1<T>,
-    tableau: &ButcherTableau<T>,
-    f: &F,
-) -> Result<Array2<T>, SolverError>
-where
-    T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
-{
-    let n = y0.len();
-    let n_steps = xs.len();
-    let stages = tableau.c.len();
+/// Implementors provide a [`solve`](Solver::solve) method that integrates an ODE
+/// over a fixed time grid. The default implementation performs explicit
+/// fixed-step Runge–Kutta integration using the coefficients returned by
+/// [`tableau`](Solver::tableau).
+pub trait Solver<T: Float + FromPrimitive> {
+    /// Return the Butcher tableau defining the Runge–Kutta method.
+    fn tableau(&self) -> &ButcherTableau<T>;
 
-    let mut u = Array2::<T>::zeros((n, n_steps));
-    u.column_mut(0).assign(y0);
-
-    let mut ks = vec![Array1::<T>::zeros(n); stages];
-
-    for i in 0..n_steps - 1 {
-        let h = xs[i + 1] - xs[i];
-
-        for m in 0..stages {
-            let mut arg = u.column(i).to_owned();
+    /// Compute all Runge–Kutta stage derivatives at a single step.
+    ///
+    /// # Parameters
+    /// * `t` — Current time.
+    /// * `h` — Step size.
+    /// * `y` — Current state vector.
+    /// * `ks` — Pre-allocated stage vector buffer (length must equal the number of stages).
+    /// * `f` — The right-hand side function `f(t, u)` returning the derivative vector.
+    fn compute_stages<F>(&self, t: T, h: T, y: &Array1<T>, ks: &mut [Array1<T>], f: &F)
+    where
+        F: Fn(T, &Array1<T>) -> Array1<T>,
+    {
+        let tableau = self.tableau();
+        for m in 0..tableau.c.len() {
+            let mut arg = y.clone();
             for (j, k) in ks.iter().enumerate() {
                 let coeff = tableau.a[[m, j]];
                 if coeff != T::zero() {
@@ -48,28 +38,72 @@ where
                         .for_each(|a, &kv| *a = *a + h * coeff * kv);
                 }
             }
-            ks[m] = f(xs[i] + tableau.c[m] * h, &arg);
+            ks[m] = f(t + tableau.c[m] * h, &arg);
         }
-
-        let mut update = Array1::<T>::zeros(n);
-        for (m, k) in ks.iter().enumerate() {
-            let coeff = tableau.b[m];
-            if coeff != T::zero() {
-                ndarray::Zip::from(&mut update)
-                    .and(k)
-                    .for_each(|u, &kv| *u = *u + coeff * kv);
-            }
-        }
-
-        let y_i = u.column(i).to_owned();
-        u.column_mut(i + 1).assign(
-            &ndarray::Zip::from(&y_i)
-                .and(&update)
-                .map_collect(|&y, &up| y + h * up),
-        );
     }
 
-    Ok(u)
+    /// Compute the weighted sum of stage vectors.
+    ///
+    /// Returns `Σᵢ b[i] · ks[i]`.
+    fn weighted_sum(&self, ks: &[Array1<T>], b: &Array1<T>) -> Array1<T> {
+        let n = ks[0].len();
+        let mut sum = Array1::<T>::zeros(n);
+        for (m, k) in ks.iter().enumerate() {
+            let coeff = b[m];
+            if coeff != T::zero() {
+                ndarray::Zip::from(&mut sum)
+                    .and(k)
+                    .for_each(|s, &kv| *s = *s + coeff * kv);
+            }
+        }
+        sum
+    }
+
+    /// Integrate the ODE system over the given time grid.
+    ///
+    /// # Parameters
+    /// * `xs` — Time grid points (must contain at least two elements).
+    /// * `y0` — Initial state vector of length `n`.
+    /// * `f` — The right-hand side function `f(t, u)` returning the derivative vector.
+    ///
+    /// # Returns
+    /// A matrix of shape `(n, len(xs))` where each column is the state at the
+    /// corresponding time point.
+    fn solve<F>(&self, xs: &[T], y0: &Array1<T>, f: &F) -> Result<Array2<T>, SolverError>
+    where
+        F: Fn(T, &Array1<T>) -> Array1<T>,
+    {
+        let n = y0.len();
+        let n_steps = xs.len();
+        let stages = self.tableau().c.len();
+
+        let mut u = Array2::<T>::zeros((n, n_steps));
+        u.column_mut(0).assign(y0);
+
+        let mut ks = vec![Array1::<T>::zeros(n); stages];
+
+        for i in 0..n_steps - 1 {
+            let h = xs[i + 1] - xs[i];
+            let y = u.column(i).to_owned();
+            self.compute_stages(xs[i], h, &y, &mut ks, f);
+
+            let update = self.weighted_sum(&ks, &self.tableau().b);
+
+            u.column_mut(i + 1).assign(
+                &ndarray::Zip::from(&y)
+                    .and(&update)
+                    .map_collect(|&yv, &up| yv + h * up),
+            );
+        }
+
+        Ok(u)
+    }
+}
+
+impl<T: Float + FromPrimitive> Solver<T> for ButcherTableau<T> {
+    fn tableau(&self) -> &ButcherTableau<T> {
+        self
+    }
 }
 
 /// Solve an ODE problem using variable step-size (adaptive) integration.
@@ -79,7 +113,7 @@ where
 ///
 /// # Parameters
 /// * `prob` — The ODE problem definition.
-/// * `tableau` — The Butcher tableau of an embedded Runge–Kutta pair.
+/// * `solver` — The ODE solver (provides the Butcher tableau of an embedded Runge–Kutta pair).
 /// * `h0` — Initial step size guess.
 /// * `atol` — Absolute tolerance for the error per step.
 /// * `rtol` — Relative tolerance for the error per step.
@@ -87,9 +121,9 @@ where
 /// # Returns
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories, or
 /// `Err(SolverError)` if the tableau does not provide distinct embedded coefficients.
-pub fn solve_adaptive<T, F>(
+pub fn solve_adaptive<T, F, S: Solver<T> + ?Sized>(
     prob: &ODEProblem<T, F>,
-    tableau: &ButcherTableau<T>,
+    solver: &S,
     h0: T,
     atol: T,
     rtol: T,
@@ -98,6 +132,7 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
+    let tableau = solver.tableau();
     if tableau.b == tableau.b_hat {
         return Err(SolverError::AdaptiveNotSupported);
     }
@@ -123,7 +158,6 @@ where
     ts.push(t);
     us.push(y.clone());
 
-    let f = &prob.f;
     let mut ks = vec![Array1::<T>::zeros(n); stages];
 
     for _step in 0..max_steps {
@@ -135,18 +169,7 @@ where
             h = tf - t;
         }
 
-        for m in 0..stages {
-            let mut arg = y.clone();
-            for (j, k) in ks.iter().enumerate() {
-                let coeff = tableau.a[[m, j]];
-                if coeff != T::zero() {
-                    ndarray::Zip::from(&mut arg)
-                        .and(k)
-                        .for_each(|a, &kv| *a = *a + h * coeff * kv);
-                }
-            }
-            ks[m] = f(t + tableau.c[m] * h, &arg);
-        }
+        solver.compute_stages(t, h, &y, &mut ks, &prob.f);
 
         let mut err_diff = Array1::<T>::zeros(n);
         let mut update = Array1::<T>::zeros(n);
@@ -220,14 +243,14 @@ where
 /// # Parameters
 /// * `prob` — The ODE problem definition containing the right-hand side, initial condition,
 ///   and time span.
-/// * `tableau` — The Butcher tableau defining the Runge-Kutta method.
+/// * `solver` — The ODE solver (provides the Butcher tableau defining the Runge-Kutta method).
 /// * `dt` — The fixed step size for time-stepping.
 ///
 /// # Returns
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
-pub fn solve<T, F>(
+pub fn solve<T, F, S: Solver<T> + ?Sized>(
     prob: &ODEProblem<T, F>,
-    tableau: &ButcherTableau<T>,
+    solver: &S,
     dt: T,
 ) -> Result<ODESolution<T>, SolverError>
 where
@@ -243,7 +266,7 @@ where
     }
     xs.push(prob.tspan.1);
 
-    let u = runge_kutta_system(&xs, &prob.u0, tableau, &prob.f)?;
+    let u = solver.solve(&xs, &prob.u0, &prob.f)?;
 
     Ok(ODESolution::<T> { t: xs.into(), u })
 }

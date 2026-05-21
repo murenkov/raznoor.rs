@@ -18,7 +18,7 @@ pub use butcher::{
     ButcherTableau, DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
     RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5, build_tableau,
 };
-pub use solver::{solve, solve_adaptive};
+pub use solver::{Solver, solve, solve_adaptive};
 pub use types::{ODEProblem, ODESolution, SolverError};
 
 #[cfg(test)]
