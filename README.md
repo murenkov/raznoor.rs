@@ -4,9 +4,8 @@ A Rust library for solving ordinary differential equations (ODEs) using explicit
 
 ## Features
 
-- First-order explicit Runge-Kutta (Euler's method)
-- Second-order explicit Runge-Kutta (midpoint method)
-- Fourth-order explicit Runge-Kutta (classic RK4)
+- Explicit Runge-Kutta methods of orders 1 through 5
+- Adaptive embedded Runge-Kutta pairs (Fehlberg45, Dormand–Prince45)
 - Generic over floating-point types (`f32`, `f64`)
 - Error handling via `SolverError` instead of panics
 
@@ -22,17 +21,18 @@ raznur = "0.1.0"
 Example solving `y' = 2x + y` with `y(1) = 1` over `[1.0, 1.1]`:
 
 ```rust
-use raznur::{ODEProblem, DEAlgorithm, solve};
+use ndarray::array;
+use raznur::{ODEProblem, solve, RUNGE_KUTTA_4};
 
-let fun = |x: f64, y: f64| 2.0 * x + y;
+let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
 let prob = ODEProblem {
-    f: fun,
-    u0: 1.0,
+    f,
+    u0: array![1.0],
     tspan: (1.0, 1.1),
 };
 
-let sol = solve(&prob, DEAlgorithm::ExplicitRungeKutta4, 0.01).unwrap();
-for (t, u) in sol.t.iter().zip(sol.u[0].iter()) {
+let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+for (t, u) in sol.t.iter().zip(sol.u.row(0).iter()) {
     println!("t = {t:.2}, y = {u:.6}");
 }
 ```
@@ -41,9 +41,13 @@ for (t, u) in sol.t.iter().zip(sol.u[0].iter()) {
 
 | Variant                   | Order | Description                     |
 |---------------------------|-------|---------------------------------|
-| `ExplicitRungeKutta1`     | 1     | Forward Euler method            |
-| `ExplicitRungeKutta2`     | 2     | Midpoint (modified Euler) method|
-| `ExplicitRungeKutta4`     | 4     | Classic fourth-order RK method  |
+| `RUNGE_KUTTA_1`           | 1     | Forward Euler method            |
+| `RUNGE_KUTTA_2`           | 2     | Midpoint (modified Euler) method|
+| `RUNGE_KUTTA_3`           | 3     | Kutta's third-order method      |
+| `RUNGE_KUTTA_4`           | 4     | Classic fourth-order RK method  |
+| `RUNGE_KUTTA_5`           | 5     | Butcher's fifth-order method    |
+| `FEHLBERG45`              | 4(5)  | Fehlberg embedded RK pair       |
+| `DORMAND_PRINCE45`        | 4(5)  | Dormand–Prince embedded RK pair |
 
 ## License
 
