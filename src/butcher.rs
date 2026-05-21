@@ -12,258 +12,235 @@ pub struct ButcherTableau<T: Float> {
     /// Higher-order weights for the solution.
     pub b: Array1<T>,
     /// Lower-order embedded weights for error estimation (adaptive stepping).
-    pub b_embedded: Array1<T>,
+    pub b_hat: Array1<T>,
     /// Node positions.
     pub c: Array1<T>,
 }
+
+/// An explicit Runge–Kutta method defined by its Butcher tableau coefficients.
+///
+/// Stores coefficients as static slices so that well-known methods can be
+/// provided as `const` values.
+#[derive(Debug, Clone, Copy)]
+pub struct ExplicitRungeKuttaMethod<T: Float + 'static> {
+    /// Runge-Kutta matrix (row slices of the lower-triangular part).
+    pub a: &'static [&'static [T]],
+    /// Higher-order weights for the solution.
+    pub b: &'static [T],
+    /// Lower-order embedded weights for error estimation (adaptive stepping).
+    pub b_hat: &'static [T],
+    /// Node positions.
+    pub c: &'static [T],
+}
+
+impl<T: Float + 'static> ExplicitRungeKuttaMethod<T> {
+    /// Convert to a [`ButcherTableau<U>`] by casting each coefficient.
+    pub fn to_tableau<U: Float + FromPrimitive>(&self) -> ButcherTableau<U> {
+        build_tableau(self.a, self.b, self.b_hat, self.c)
+    }
+}
+
+#[rustfmt::skip]
+const RK1_A: &[&[f64]] = &[
+    &[0.0],
+];
+
+/// Explicit Euler method (first-order Runge–Kutta).
+pub const RUNGE_KUTTA_1: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+    a: RK1_A,
+    b: &[1.0],
+    b_hat: &[1.0],
+    c: &[0.0],
+};
+
+#[rustfmt::skip]
+const RK2_A: &[&[f64]] = &[
+    &[0.0, 0.0],
+    &[1.0, 0.0],
+];
+
+/// Explicit midpoint method (second-order Runge–Kutta).
+pub const RUNGE_KUTTA_2: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+    a: RK2_A,
+    b: &[0.5, 0.5],
+    b_hat: &[0.5, 0.5],
+    c: &[0.0, 1.0],
+};
+
+#[rustfmt::skip]
+const RK3_A: &[&[f64]] = &[
+    &[ 0.0, 0.0, 0.0],
+    &[ 0.5, 0.0, 0.0],
+    &[-1.0, 2.0, 0.0],
+];
+
+/// Kutta's third-order Runge–Kutta method.
+pub const RUNGE_KUTTA_3: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+    a: RK3_A,
+    b: &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
+    b_hat: &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
+    c: &[0.0, 0.5, 1.0],
+};
+
+#[rustfmt::skip]
+const RK4_A: &[&[f64]] = &[
+    &[0.0, 0.0, 0.0, 0.0],
+    &[0.5, 0.0, 0.0, 0.0],
+    &[0.0, 0.5, 0.0, 0.0],
+    &[0.0, 0.0, 1.0, 0.0],
+];
+
+/// Classical fourth-order Runge–Kutta method (RK4).
+pub const RUNGE_KUTTA_4: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+    a: RK4_A,
+    b: &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
+    b_hat: &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
+    c: &[0.0, 0.5, 0.5, 1.0],
+};
+
+#[rustfmt::skip]
+const RK5_A: &[&[f64]] = &[
+    &[        0.0,        0.0,       0.0,         0.0,       0.0, 0.0],
+    &[  1.0 / 4.0,        0.0,       0.0,         0.0,       0.0, 0.0],
+    &[  1.0 / 8.0,  1.0 / 8.0,       0.0,         0.0,       0.0, 0.0],
+    &[        0.0,        0.0, 1.0 / 2.0,         0.0,       0.0, 0.0],
+    &[ 3.0 / 16.0, -3.0 / 8.0, 3.0 / 8.0,  9.0 / 16.0,       0.0, 0.0],
+    &[ -3.0 / 7.0,  8.0 / 7.0, 6.0 / 7.0, -12.0 / 7.0, 8.0 / 7.0, 0.0],
+];
+
+/// Butcher's fifth-order Runge–Kutta method.
+pub const RUNGE_KUTTA_5: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+    a: RK5_A,
+    b: &[
+        7.0 / 90.0,
+        0.0,
+        32.0 / 90.0,
+        12.0 / 90.0,
+        32.0 / 90.0,
+        7.0 / 90.0,
+    ],
+    b_hat: &[
+        7.0 / 90.0,
+        0.0,
+        32.0 / 90.0,
+        12.0 / 90.0,
+        32.0 / 90.0,
+        7.0 / 90.0,
+    ],
+    c: &[0.0, 1.0 / 4.0, 1.0 / 4.0, 1.0 / 2.0, 3.0 / 4.0, 1.0],
+};
+
+/// Alias for [`RUNGE_KUTTA_1`].
+pub const EULER: ExplicitRungeKuttaMethod<f64> = RUNGE_KUTTA_1;
+/// Alias for [`RUNGE_KUTTA_2`].
+pub const MIDPOINT: ExplicitRungeKuttaMethod<f64> = RUNGE_KUTTA_2;
+/// Alias for [`RUNGE_KUTTA_3`].
+pub const KUTTA3: ExplicitRungeKuttaMethod<f64> = RUNGE_KUTTA_3;
+/// Alias for [`RUNGE_KUTTA_5`].
+pub const BUTCHER5: ExplicitRungeKuttaMethod<f64> = RUNGE_KUTTA_5;
+
+#[rustfmt::skip]
+const FEHLBERG45_A: &[&[f64]] = &[
+    &[            0.0,              0.0,              0.0,             0.0,          0.0, 0.0],
+    &[      1.0 / 4.0,              0.0,              0.0,             0.0,          0.0, 0.0],
+    &[     3.0 / 32.0,       9.0 / 32.0,              0.0,             0.0,          0.0, 0.0],
+    &[1932.0 / 2197.0, -7200.0 / 2197.0,  7296.0 / 2197.0,             0.0,          0.0, 0.0],
+    &[  439.0 / 216.0,             -8.0,   3680.0 / 513.0, -845.0 / 4104.0,          0.0, 0.0],
+    &[    -8.0 / 27.0,              2.0, -3544.0 / 2565.0, 1859.0 / 4104.0, -11.0 / 40.0, 0.0],
+];
+
+/// Fehlberg's embedded 4(5) method (RKF45).
+pub const FEHLBERG45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+    a: FEHLBERG45_A,
+    b: &[
+        16.0 / 135.0,
+        0.0,
+        6656.0 / 12825.0,
+        28561.0 / 56430.0,
+        -9.0 / 50.0,
+        2.0 / 55.0,
+    ],
+    b_hat: &[
+        25.0 / 216.0,
+        0.0,
+        1408.0 / 2565.0,
+        2197.0 / 4104.0,
+        -1.0 / 5.0,
+        0.0,
+    ],
+    c: &[0.0, 1.0 / 4.0, 3.0 / 8.0, 12.0 / 13.0, 1.0, 1.0 / 2.0],
+};
+
+#[rustfmt::skip]
+const DORMAND_PRINCE45_A: &[&[f64]] = &[
+    &[             0.0,               0.0,              0.0,            0.0,               0.0,         0.0, 0.0],
+    &[       1.0 / 5.0,               0.0,              0.0,            0.0,               0.0,         0.0, 0.0],
+    &[      3.0 / 40.0,        9.0 / 40.0,              0.0,            0.0,               0.0,         0.0, 0.0],
+    &[     44.0 / 45.0,      -56.0 / 15.0,       32.0 / 9.0,            0.0,               0.0,         0.0, 0.0],
+    &[19372.0 / 6561.0, -25360.0 / 2187.0, 64448.0 / 6561.0, -212.0 / 729.0,               0.0,         0.0, 0.0],
+    &[ 9017.0 / 3168.0,     -355.0 / 33.0, 46732.0 / 5247.0,   49.0 / 176.0, -5103.0 / 18656.0,         0.0, 0.0],
+    &[    35.0 / 384.0,               0.0,   500.0 / 1113.0,  125.0 / 192.0,  -2187.0 / 6784.0, 11.0 / 84.0, 0.0],
+];
+
+/// Dormand–Prince embedded 4(5) method (DOPRI54).
+pub const DORMAND_PRINCE45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+    a: DORMAND_PRINCE45_A,
+    b: &[
+        35.0 / 384.0,
+        0.0,
+        500.0 / 1113.0,
+        125.0 / 192.0,
+        -2187.0 / 6784.0,
+        11.0 / 84.0,
+        0.0,
+    ],
+    b_hat: &[
+        5179.0 / 57600.0,
+        0.0,
+        7571.0 / 16695.0,
+        393.0 / 640.0,
+        -92097.0 / 339200.0,
+        187.0 / 2100.0,
+        1.0 / 40.0,
+    ],
+    c: &[0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0],
+};
 
 /// Build a [`ButcherTableau`] from coefficient slices.
 ///
 /// # Parameters
 /// * `a_coeffs` — Row slices of the Runge–Kutta matrix (padded with zeros to form a square).
 /// * `b_coeffs` — Higher-order weight coefficients.
-/// * `b_embedded_coeffs` — Lower-order embedded weight coefficients (for adaptive error estimation).
+/// * `b_hat_coeffs` — Lower-order embedded weight coefficients (for adaptive error estimation).
 /// * `c_coeffs` — Node position coefficients.
-pub fn build_tableau<T>(
-    a_coeffs: &[&[f64]],
-    b_coeffs: &[f64],
-    b_embedded_coeffs: &[f64],
-    c_coeffs: &[f64],
-) -> ButcherTableau<T>
+pub fn build_tableau<T, U>(
+    a_coeffs: &[&[T]],
+    b_coeffs: &[T],
+    b_hat_coeffs: &[T],
+    c_coeffs: &[T],
+) -> ButcherTableau<U>
 where
-    T: Float + FromPrimitive,
+    T: Float,
+    U: Float + FromPrimitive,
 {
-    let cast = |x: f64| -> T {
-        FromPrimitive::from_f64(x).expect("Butcher tableau coefficients are valid f64 constants")
+    let cast = |x: &T| -> U {
+        let f = x.to_f64().expect("Butcher tableau coefficient fits in f64");
+        FromPrimitive::from_f64(f).expect("Butcher tableau coefficient converts to target type")
     };
 
     let n_stages = c_coeffs.len();
     let mut a_arr = Vec::with_capacity(n_stages * n_stages);
     for row in a_coeffs {
-        for &val in *row {
+        for val in *row {
             a_arr.push(cast(val));
         }
     }
     let a = Matrix::from_shape_vec((n_stages, n_stages), a_arr)
         .expect("Butcher tableau A matrix is square");
 
-    let b: Array1<T> = b_coeffs.iter().map(|&x| cast(x)).collect();
-    let b_embedded: Array1<T> = b_embedded_coeffs.iter().map(|&x| cast(x)).collect();
-    let c: Array1<T> = c_coeffs.iter().map(|&x| cast(x)).collect();
+    let b: Array1<U> = b_coeffs.iter().map(cast).collect();
+    let b_hat: Array1<U> = b_hat_coeffs.iter().map(cast).collect();
+    let c: Array1<U> = c_coeffs.iter().map(cast).collect();
 
-    ButcherTableau {
-        a,
-        b,
-        b_embedded,
-        c,
-    }
-}
-
-/// Returns the Butcher tableau for the first-order explicit Runge-Kutta method (Euler's method).
-pub fn erk1<T>() -> ButcherTableau<T>
-where
-    T: Float + FromPrimitive,
-{
-    build_tableau(&[&[0.0]], &[1.0], &[1.0], &[0.0])
-}
-
-/// Returns the Butcher tableau for the second-order explicit Runge-Kutta method (midpoint method).
-pub fn erk2<T>() -> ButcherTableau<T>
-where
-    T: Float + FromPrimitive,
-{
-    build_tableau(
-        &[&[0.0, 0.0], &[1.0, 0.0]],
-        &[0.5, 0.5],
-        &[0.5, 0.5],
-        &[0.0, 1.0],
-    )
-}
-
-/// Returns the Butcher tableau for the third-order explicit Runge-Kutta method (Kutta's method).
-pub fn erk3<T>() -> ButcherTableau<T>
-where
-    T: Float + FromPrimitive,
-{
-    build_tableau(
-        &[&[0.0, 0.0, 0.0], &[0.5, 0.0, 0.0], &[-1.0, 2.0, 0.0]],
-        &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
-        &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
-        &[0.0, 0.5, 1.0],
-    )
-}
-
-/// Returns the Butcher tableau for the classical fourth-order explicit Runge-Kutta method (RK4).
-pub fn erk4<T>() -> ButcherTableau<T>
-where
-    T: Float + FromPrimitive,
-{
-    build_tableau(
-        &[
-            &[0.0, 0.0, 0.0, 0.0],
-            &[0.5, 0.0, 0.0, 0.0],
-            &[0.0, 0.5, 0.0, 0.0],
-            &[0.0, 0.0, 1.0, 0.0],
-        ],
-        &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
-        &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
-        &[0.0, 0.5, 0.5, 1.0],
-    )
-}
-
-/// Returns the Butcher tableau for Butcher's fifth-order explicit Runge-Kutta method.
-pub fn erk5<T>() -> ButcherTableau<T>
-where
-    T: Float + FromPrimitive,
-{
-    build_tableau(
-        &[
-            &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            &[1.0 / 4.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            &[1.0 / 8.0, 1.0 / 8.0, 0.0, 0.0, 0.0, 0.0],
-            &[0.0, 0.0, 1.0 / 2.0, 0.0, 0.0, 0.0],
-            &[3.0 / 16.0, -3.0 / 8.0, 3.0 / 8.0, 9.0 / 16.0, 0.0, 0.0],
-            &[
-                -3.0 / 7.0,
-                8.0 / 7.0,
-                6.0 / 7.0,
-                -12.0 / 7.0,
-                8.0 / 7.0,
-                0.0,
-            ],
-        ],
-        &[
-            7.0 / 90.0,
-            0.0,
-            32.0 / 90.0,
-            12.0 / 90.0,
-            32.0 / 90.0,
-            7.0 / 90.0,
-        ],
-        &[
-            7.0 / 90.0,
-            0.0,
-            32.0 / 90.0,
-            12.0 / 90.0,
-            32.0 / 90.0,
-            7.0 / 90.0,
-        ],
-        &[0.0, 1.0 / 4.0, 1.0 / 4.0, 1.0 / 2.0, 3.0 / 4.0, 1.0],
-    )
-}
-
-/// Returns the Butcher tableau for Fehlberg's embedded 4(5) method (RKF45).
-pub fn fehlberg45<T>() -> ButcherTableau<T>
-where
-    T: Float + FromPrimitive,
-{
-    build_tableau(
-        &[
-            &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            &[1.0 / 4.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            &[3.0 / 32.0, 9.0 / 32.0, 0.0, 0.0, 0.0, 0.0],
-            &[
-                1932.0 / 2197.0,
-                -7200.0 / 2197.0,
-                7296.0 / 2197.0,
-                0.0,
-                0.0,
-                0.0,
-            ],
-            &[
-                439.0 / 216.0,
-                -8.0,
-                3680.0 / 513.0,
-                -845.0 / 4104.0,
-                0.0,
-                0.0,
-            ],
-            &[
-                -8.0 / 27.0,
-                2.0,
-                -3544.0 / 2565.0,
-                1859.0 / 4104.0,
-                -11.0 / 40.0,
-                0.0,
-            ],
-        ],
-        &[
-            16.0 / 135.0,
-            0.0,
-            6656.0 / 12825.0,
-            28561.0 / 56430.0,
-            -9.0 / 50.0,
-            2.0 / 55.0,
-        ],
-        &[
-            25.0 / 216.0,
-            0.0,
-            1408.0 / 2565.0,
-            2197.0 / 4104.0,
-            -1.0 / 5.0,
-            0.0,
-        ],
-        &[0.0, 1.0 / 4.0, 3.0 / 8.0, 12.0 / 13.0, 1.0, 1.0 / 2.0],
-    )
-}
-
-/// Returns the Butcher tableau for the Dormand–Prince embedded 4(5) method (DOPRI54).
-pub fn dormand_prince45<T>() -> ButcherTableau<T>
-where
-    T: Float + FromPrimitive,
-{
-    build_tableau(
-        &[
-            &[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            &[1.0 / 5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            &[3.0 / 40.0, 9.0 / 40.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            &[44.0 / 45.0, -56.0 / 15.0, 32.0 / 9.0, 0.0, 0.0, 0.0, 0.0],
-            &[
-                19372.0 / 6561.0,
-                -25360.0 / 2187.0,
-                64448.0 / 6561.0,
-                -212.0 / 729.0,
-                0.0,
-                0.0,
-                0.0,
-            ],
-            &[
-                9017.0 / 3168.0,
-                -355.0 / 33.0,
-                46732.0 / 5247.0,
-                49.0 / 176.0,
-                -5103.0 / 18656.0,
-                0.0,
-                0.0,
-            ],
-            &[
-                35.0 / 384.0,
-                0.0,
-                500.0 / 1113.0,
-                125.0 / 192.0,
-                -2187.0 / 6784.0,
-                11.0 / 84.0,
-                0.0,
-            ],
-        ],
-        &[
-            35.0 / 384.0,
-            0.0,
-            500.0 / 1113.0,
-            125.0 / 192.0,
-            -2187.0 / 6784.0,
-            11.0 / 84.0,
-            0.0,
-        ],
-        &[
-            5179.0 / 57600.0,
-            0.0,
-            7571.0 / 16695.0,
-            393.0 / 640.0,
-            -92097.0 / 339200.0,
-            187.0 / 2100.0,
-            1.0 / 40.0,
-        ],
-        &[0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0],
-    )
+    ButcherTableau { a, b, b_hat, c }
 }
