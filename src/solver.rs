@@ -10,6 +10,7 @@ fn compute_stages<T, F>(
     t: T,
     h: T,
     y: &Array1<T>,
+    arg: &mut Array1<T>,
     ks: &mut [Array1<T>],
     f: &F,
 ) where
@@ -18,16 +19,16 @@ fn compute_stages<T, F>(
 {
     let cast = |x: &f64| T::from_f64(*x).unwrap();
     for m in 0..method.c.len() {
-        let mut arg = y.clone();
+        arg.assign(y);
         for (j, k) in ks.iter().enumerate() {
             let coeff = cast(&method.a[m][j]);
             if coeff != T::zero() {
-                ndarray::Zip::from(&mut arg)
+                ndarray::Zip::from(&mut *arg)
                     .and(k)
                     .for_each(|a, &kv| *a = *a + h * coeff * kv);
             }
         }
-        ks[m] = f(t + cast(&method.c[m]) * h, &arg);
+        ks[m] = f(t + cast(&method.c[m]) * h, arg);
     }
 }
 
@@ -82,11 +83,12 @@ where
     u.column_mut(0).assign(&prob.u0);
 
     let mut ks = vec![Array1::<T>::zeros(n); stages];
+    let mut arg = Array1::<T>::zeros(n);
 
     for i in 0..n_steps - 1 {
         let h = xs[i + 1] - xs[i];
         let y = u.column(i).to_owned();
-        compute_stages(method, xs[i], h, &y, &mut ks, &prob.f);
+        compute_stages(method, xs[i], h, &y, &mut arg, &mut ks, &prob.f);
 
         let update = weighted_sum(&ks, method.b);
 
@@ -158,6 +160,7 @@ where
     us.push(y.clone());
 
     let mut ks = vec![Array1::<T>::zeros(n); stages];
+    let mut arg = Array1::<T>::zeros(n);
 
     for _step in 0..max_steps {
         if (t - tf).abs() <= T::epsilon() {
@@ -168,7 +171,7 @@ where
             h = tf - t;
         }
 
-        compute_stages(method, t, h, &y, &mut ks, &prob.f);
+        compute_stages(method, t, h, &y, &mut arg, &mut ks, &prob.f);
 
         let update = weighted_sum(&ks, method.b);
         let err_diff = weighted_sum(&ks, &b_diff);
