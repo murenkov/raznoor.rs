@@ -15,7 +15,8 @@ pub mod butcher;
 pub mod solver;
 
 pub use butcher::{
-    ButcherTableau, build_tableau, dormand_prince45, erk1, erk2, erk3, erk4, erk5, fehlberg45,
+    ButcherTableau, DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
+    RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5, build_tableau,
 };
 pub use solver::{solve, solve_adaptive};
 pub use types::{ODEProblem, ODESolution, SolverError};
@@ -88,70 +89,110 @@ mod tests {
         };
     }
 
-    ode_test!(solve_erk1_f32, erk1::<f32>(), linear_problem::<f32>());
-    ode_test!(solve_erk2_f32, erk2::<f32>(), linear_problem::<f32>());
-    ode_test!(solve_erk3_f32, erk3::<f32>(), linear_problem::<f32>());
-    ode_test!(solve_erk4_f32, erk4::<f32>(), linear_problem::<f32>());
-    ode_test!(solve_erk5_f32, erk5::<f32>(), linear_problem::<f32>());
+    ode_test!(
+        solve_erk1_f32,
+        RUNGE_KUTTA_1.to_tableau::<f32>(),
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_erk2_f32,
+        RUNGE_KUTTA_2.to_tableau::<f32>(),
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_erk3_f32,
+        RUNGE_KUTTA_3.to_tableau::<f32>(),
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_erk4_f32,
+        RUNGE_KUTTA_4.to_tableau::<f32>(),
+        linear_problem::<f32>()
+    );
+    ode_test!(
+        solve_erk5_f32,
+        RUNGE_KUTTA_5.to_tableau::<f32>(),
+        linear_problem::<f32>()
+    );
     ode_test!(
         solve_fehlberg45_f32,
-        fehlberg45::<f32>(),
+        FEHLBERG45.to_tableau::<f32>(),
         linear_problem::<f32>()
     );
     ode_test!(
         solve_dopri54_f32,
-        dormand_prince45::<f32>(),
+        DORMAND_PRINCE45.to_tableau::<f32>(),
         linear_problem::<f32>()
     );
-    ode_test!(solve_erk1_f64, erk1::<f64>(), linear_problem::<f64>());
-    ode_test!(solve_erk2_f64, erk2::<f64>(), linear_problem::<f64>());
-    ode_test!(solve_erk3_f64, erk3::<f64>(), linear_problem::<f64>());
-    ode_test!(solve_erk4_f64, erk4::<f64>(), linear_problem::<f64>());
-    ode_test!(solve_erk5_f64, erk5::<f64>(), linear_problem::<f64>());
+    ode_test!(
+        solve_erk1_f64,
+        RUNGE_KUTTA_1.to_tableau::<f64>(),
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_erk2_f64,
+        RUNGE_KUTTA_2.to_tableau::<f64>(),
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_erk3_f64,
+        RUNGE_KUTTA_3.to_tableau::<f64>(),
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_erk4_f64,
+        RUNGE_KUTTA_4.to_tableau::<f64>(),
+        linear_problem::<f64>()
+    );
+    ode_test!(
+        solve_erk5_f64,
+        RUNGE_KUTTA_5.to_tableau::<f64>(),
+        linear_problem::<f64>()
+    );
     ode_test!(
         solve_fehlberg45_f64,
-        fehlberg45::<f64>(),
+        FEHLBERG45.to_tableau::<f64>(),
         linear_problem::<f64>()
     );
     ode_test!(
         solve_dopri54_f64,
-        dormand_prince45::<f64>(),
+        DORMAND_PRINCE45.to_tableau::<f64>(),
         linear_problem::<f64>()
     );
 
     ode_test!(
         solve_system_two_vars_erk1,
-        erk1::<f64>(),
+        RUNGE_KUTTA_1.to_tableau::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_erk2,
-        erk2::<f64>(),
+        RUNGE_KUTTA_2.to_tableau::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_erk3,
-        erk3::<f64>(),
+        RUNGE_KUTTA_3.to_tableau::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_erk4,
-        erk4::<f64>(),
+        RUNGE_KUTTA_4.to_tableau::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_erk5,
-        erk5::<f64>(),
+        RUNGE_KUTTA_5.to_tableau::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_fehlberg45,
-        fehlberg45::<f64>(),
+        FEHLBERG45.to_tableau::<f64>(),
         oscillator_problem::<f64>()
     );
     ode_test!(
         solve_system_two_vars_dopri54,
-        dormand_prince45::<f64>(),
+        DORMAND_PRINCE45.to_tableau::<f64>(),
         oscillator_problem::<f64>()
     );
 
@@ -176,42 +217,42 @@ mod tests {
 
     adaptive_test!(
         solve_adaptive_fehlberg45_f32,
-        fehlberg45::<f32>(),
+        FEHLBERG45.to_tableau::<f32>(),
         linear_problem::<f32>(),
         1e-4f32,
         1e-4f32
     );
     adaptive_test!(
         solve_adaptive_dopri54_f32,
-        dormand_prince45::<f32>(),
+        DORMAND_PRINCE45.to_tableau::<f32>(),
         linear_problem::<f32>(),
         1e-4f32,
         1e-4f32
     );
     adaptive_test!(
         solve_adaptive_fehlberg45_f64,
-        fehlberg45::<f64>(),
+        FEHLBERG45.to_tableau::<f64>(),
         linear_problem::<f64>(),
         1e-8f64,
         1e-8f64
     );
     adaptive_test!(
         solve_adaptive_dopri54_f64,
-        dormand_prince45::<f64>(),
+        DORMAND_PRINCE45.to_tableau::<f64>(),
         linear_problem::<f64>(),
         1e-8f64,
         1e-8f64
     );
     adaptive_test!(
         solve_adaptive_fehlberg45_osc,
-        fehlberg45::<f64>(),
+        FEHLBERG45.to_tableau::<f64>(),
         oscillator_problem::<f64>(),
         1e-6f64,
         1e-6f64
     );
     adaptive_test!(
         solve_adaptive_dopri54_osc,
-        dormand_prince45::<f64>(),
+        DORMAND_PRINCE45.to_tableau::<f64>(),
         oscillator_problem::<f64>(),
         1e-6f64,
         1e-6f64

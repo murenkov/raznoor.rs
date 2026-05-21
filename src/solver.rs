@@ -98,7 +98,7 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    if tableau.b == tableau.b_embedded {
+    if tableau.b == tableau.b_hat {
         return Err(SolverError::AdaptiveNotSupported);
     }
     let n = prob.u0.len();
@@ -152,7 +152,7 @@ where
         let mut update = Array1::<T>::zeros(n);
         for (m, k) in ks.iter().enumerate() {
             let coeff = tableau.b[m];
-            let embedded = tableau.b_embedded[m];
+            let embedded = tableau.b_hat[m];
             if coeff != T::zero() || embedded != T::zero() {
                 let d = coeff - embedded;
                 ndarray::Zip::from(&mut err_diff)

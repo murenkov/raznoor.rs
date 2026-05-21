@@ -1,7 +1,7 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use ndarray::Array1;
 use ndarray::array;
-use raznur::{ODEProblem, erk1, erk2, erk4, solve};
+use raznur::{ODEProblem, RUNGE_KUTTA_1, RUNGE_KUTTA_2, RUNGE_KUTTA_4, solve};
 
 /// Benchmark ODE solver accuracy and performance across algorithm/type combinations.
 fn ode_solver(c: &mut Criterion) {
@@ -19,9 +19,9 @@ fn ode_solver(c: &mut Criterion) {
     };
 
     for (name, tableau) in [
-        ("RK1", erk1::<f64>()),
-        ("RK2", erk2::<f64>()),
-        ("RK4", erk4::<f64>()),
+        ("RK1", RUNGE_KUTTA_1.to_tableau::<f64>()),
+        ("RK2", RUNGE_KUTTA_2.to_tableau::<f64>()),
+        ("RK4", RUNGE_KUTTA_4.to_tableau::<f64>()),
     ] {
         group.bench_function(format!("{name}_f64_coarse"), |b| {
             b.iter(|| solve(black_box(&prob_f64), black_box(&tableau), black_box(0.1)))
@@ -31,9 +31,9 @@ fn ode_solver(c: &mut Criterion) {
         });
         group.bench_function(format!("{name}_f32_coarse"), |b| {
             let tableau_f32 = match name {
-                "RK1" => erk1::<f32>(),
-                "RK2" => erk2::<f32>(),
-                _ => erk4::<f32>(),
+                "RK1" => RUNGE_KUTTA_1.to_tableau::<f32>(),
+                "RK2" => RUNGE_KUTTA_2.to_tableau::<f32>(),
+                _ => RUNGE_KUTTA_4.to_tableau::<f32>(),
             };
             b.iter(|| {
                 solve(
@@ -45,9 +45,9 @@ fn ode_solver(c: &mut Criterion) {
         });
         group.bench_function(format!("{name}_f32_fine"), |b| {
             let tableau_f32 = match name {
-                "RK1" => erk1::<f32>(),
-                "RK2" => erk2::<f32>(),
-                _ => erk4::<f32>(),
+                "RK1" => RUNGE_KUTTA_1.to_tableau::<f32>(),
+                "RK2" => RUNGE_KUTTA_2.to_tableau::<f32>(),
+                _ => RUNGE_KUTTA_4.to_tableau::<f32>(),
             };
             b.iter(|| {
                 solve(
@@ -73,9 +73,9 @@ fn ode_solver_large(c: &mut Criterion) {
     };
 
     for (name, tableau) in [
-        ("RK1", erk1::<f64>()),
-        ("RK2", erk2::<f64>()),
-        ("RK4", erk4::<f64>()),
+        ("RK1", RUNGE_KUTTA_1.to_tableau::<f64>()),
+        ("RK2", RUNGE_KUTTA_2.to_tableau::<f64>()),
+        ("RK4", RUNGE_KUTTA_4.to_tableau::<f64>()),
     ] {
         group.bench_function(format!("{name}_100k_steps"), |b| {
             b.iter(|| solve(black_box(&prob_f64), black_box(&tableau), black_box(0.001)))
@@ -100,8 +100,8 @@ fn precision_compare(c: &mut Criterion) {
         tspan: (1.0, 10.0),
     };
 
-    let tableau_f32 = erk4::<f32>();
-    let tableau_f64 = erk4::<f64>();
+    let tableau_f32 = RUNGE_KUTTA_4.to_tableau::<f32>();
+    let tableau_f64 = RUNGE_KUTTA_4.to_tableau::<f64>();
 
     group.bench_function("RK4_f32", |b| {
         b.iter(|| {
