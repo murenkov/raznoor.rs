@@ -129,7 +129,12 @@ where
     if method.b == method.b_hat {
         return Err(SolverError::AdaptiveNotSupported);
     }
-    let cast = |x: &f64| T::from_f64(*x).unwrap();
+    let b_diff: Vec<f64> = method
+        .b
+        .iter()
+        .zip(method.b_hat.iter())
+        .map(|(&b, &bh)| b - bh)
+        .collect();
     let n = prob.u0.len();
     let t0 = prob.tspan.0;
     let tf = prob.tspan.1;
@@ -165,23 +170,8 @@ where
 
         compute_stages(method, t, h, &y, &mut ks, &prob.f);
 
-        let mut err_diff = Array1::<T>::zeros(n);
-        let mut update = Array1::<T>::zeros(n);
-        for (m, k) in ks.iter().enumerate() {
-            let coeff = cast(&method.b[m]);
-            let embedded = cast(&method.b_hat[m]);
-            if coeff != T::zero() || embedded != T::zero() {
-                let d = coeff - embedded;
-                ndarray::Zip::from(&mut err_diff)
-                    .and(k)
-                    .for_each(|e, &kv| *e = *e + d * kv);
-            }
-            if coeff != T::zero() {
-                ndarray::Zip::from(&mut update)
-                    .and(k)
-                    .for_each(|u, &kv| *u = *u + coeff * kv);
-            }
-        }
+        let update = weighted_sum(&ks, method.b);
+        let err_diff = weighted_sum(&ks, &b_diff);
 
         let y_new = ndarray::Zip::from(&y)
             .and(&update)
