@@ -1,28 +1,9 @@
-use ndarray::{Array1, Array2};
-use num_traits::Float;
-use num_traits::FromPrimitive;
-
-type Matrix<T> = Array2<T>;
-
-/// A Butcher tableau describing an explicit Runge–Kutta method.
-#[derive(Debug, Clone)]
-pub struct ButcherTableau<T: Float> {
-    /// Runge-Kutta matrix (pairwise stage couplings).
-    pub a: Matrix<T>,
-    /// Higher-order weights for the solution.
-    pub b: Array1<T>,
-    /// Lower-order embedded weights for error estimation (adaptive stepping).
-    pub b_hat: Array1<T>,
-    /// Node positions.
-    pub c: Array1<T>,
-}
-
 /// An explicit Runge–Kutta method defined by its Butcher tableau coefficients.
 ///
 /// Stores coefficients as static slices so that well-known methods can be
 /// provided as `const` values.
 #[derive(Debug, Clone, Copy)]
-pub struct ExplicitRungeKuttaMethod<T: Float + 'static> {
+pub struct ExplicitRungeKuttaMethod<T: 'static> {
     /// Runge-Kutta matrix (row slices of the lower-triangular part).
     pub a: &'static [&'static [T]],
     /// Higher-order weights for the solution.
@@ -31,29 +12,6 @@ pub struct ExplicitRungeKuttaMethod<T: Float + 'static> {
     pub b_hat: &'static [T],
     /// Node positions.
     pub c: &'static [T],
-}
-
-impl<T: Float + 'static> ExplicitRungeKuttaMethod<T> {
-    /// Convert to a [`ButcherTableau<U>`] by casting each coefficient.
-    pub fn to_tableau<U: Float + FromPrimitive>(&self) -> ButcherTableau<U> {
-        let cast = |x: &T| -> U {
-            let f = x.to_f64().expect("Butcher tableau coefficient fits in f64");
-            FromPrimitive::from_f64(f).expect("Butcher tableau coefficient converts to target type")
-        };
-        let n_stages = self.c.len();
-        let mut a_arr = Vec::with_capacity(n_stages * n_stages);
-        for row in self.a {
-            for val in *row {
-                a_arr.push(cast(val));
-            }
-        }
-        let a = Array2::from_shape_vec((n_stages, n_stages), a_arr)
-            .expect("Butcher tableau A matrix is square");
-        let b: Array1<U> = self.b.iter().map(cast).collect();
-        let b_hat: Array1<U> = self.b_hat.iter().map(cast).collect();
-        let c: Array1<U> = self.c.iter().map(cast).collect();
-        ButcherTableau { a, b, b_hat, c }
-    }
 }
 
 #[rustfmt::skip]

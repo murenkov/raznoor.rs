@@ -12,8 +12,8 @@ pub mod butcher;
 pub mod solver;
 
 pub use butcher::{
-    ButcherTableau, DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
-    RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
+    DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1, RUNGE_KUTTA_2,
+    RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
 };
 pub use solver::{solve, solve_adaptive};
 pub use types::{ODEProblem, ODESolution, SolverError};

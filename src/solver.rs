@@ -2,11 +2,11 @@ use ndarray::{Array1, Array2};
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
-use crate::butcher::{ButcherTableau, ExplicitRungeKuttaMethod};
+use crate::butcher::ExplicitRungeKuttaMethod;
 use crate::types::{ODEProblem, ODESolution, SolverError};
 
 fn compute_stages<T, F>(
-    tableau: &ButcherTableau<T>,
+    method: &ExplicitRungeKuttaMethod<f64>,
     t: T,
     h: T,
     y: &Array1<T>,
@@ -16,25 +16,27 @@ fn compute_stages<T, F>(
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    for m in 0..tableau.c.len() {
+    let cast = |x: &f64| T::from_f64(*x).unwrap();
+    for m in 0..method.c.len() {
         let mut arg = y.clone();
         for (j, k) in ks.iter().enumerate() {
-            let coeff = tableau.a[[m, j]];
+            let coeff = cast(&method.a[m][j]);
             if coeff != T::zero() {
                 ndarray::Zip::from(&mut arg)
                     .and(k)
                     .for_each(|a, &kv| *a = *a + h * coeff * kv);
             }
         }
-        ks[m] = f(t + tableau.c[m] * h, &arg);
+        ks[m] = f(t + cast(&method.c[m]) * h, &arg);
     }
 }
 
-fn weighted_sum<T: Float>(ks: &[Array1<T>], b: &Array1<T>) -> Array1<T> {
+fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> Array1<T> {
+    let cast = |x: &f64| T::from_f64(*x).unwrap();
     let n = ks[0].len();
     let mut sum = Array1::<T>::zeros(n);
     for (m, k) in ks.iter().enumerate() {
-        let coeff = b[m];
+        let coeff = cast(&weights[m]);
         if coeff != T::zero() {
             ndarray::Zip::from(&mut sum)
                 .and(k)
@@ -63,7 +65,6 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    let tableau = method.to_tableau::<T>();
     let n_steps =
         num_traits::cast::<T, usize>(((prob.tspan.1 - prob.tspan.0) / dt).floor()).unwrap_or(0);
     let mut xs: Vec<T> = Vec::with_capacity(n_steps + 2);
@@ -75,7 +76,7 @@ where
 
     let n = prob.u0.len();
     let n_steps = xs.len();
-    let stages = tableau.c.len();
+    let stages = method.c.len();
 
     let mut u = Array2::<T>::zeros((n, n_steps));
     u.column_mut(0).assign(&prob.u0);
@@ -85,9 +86,9 @@ where
     for i in 0..n_steps - 1 {
         let h = xs[i + 1] - xs[i];
         let y = u.column(i).to_owned();
-        compute_stages(&tableau, xs[i], h, &y, &mut ks, &prob.f);
+        compute_stages(method, xs[i], h, &y, &mut ks, &prob.f);
 
-        let update = weighted_sum(&ks, &tableau.b);
+        let update = weighted_sum(&ks, method.b);
 
         u.column_mut(i + 1).assign(
             &ndarray::Zip::from(&y)
@@ -125,15 +126,15 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    let tableau = method.to_tableau::<T>();
-    if tableau.b == tableau.b_hat {
+    if method.b == method.b_hat {
         return Err(SolverError::AdaptiveNotSupported);
     }
+    let cast = |x: &f64| T::from_f64(*x).unwrap();
     let n = prob.u0.len();
     let t0 = prob.tspan.0;
     let tf = prob.tspan.1;
     let direction = if tf >= t0 { T::one() } else { -T::one() };
-    let stages = tableau.c.len();
+    let stages = method.c.len();
 
     let safety = T::from_f64(0.9).unwrap();
     let max_factor = T::from_f64(5.0).unwrap();
@@ -162,13 +163,13 @@ where
             h = tf - t;
         }
 
-        compute_stages(&tableau, t, h, &y, &mut ks, &prob.f);
+        compute_stages(method, t, h, &y, &mut ks, &prob.f);
 
         let mut err_diff = Array1::<T>::zeros(n);
         let mut update = Array1::<T>::zeros(n);
         for (m, k) in ks.iter().enumerate() {
-            let coeff = tableau.b[m];
-            let embedded = tableau.b_hat[m];
+            let coeff = cast(&method.b[m]);
+            let embedded = cast(&method.b_hat[m]);
             if coeff != T::zero() || embedded != T::zero() {
                 let d = coeff - embedded;
                 ndarray::Zip::from(&mut err_diff)
