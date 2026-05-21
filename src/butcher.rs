@@ -36,7 +36,23 @@ pub struct ExplicitRungeKuttaMethod<T: Float + 'static> {
 impl<T: Float + 'static> ExplicitRungeKuttaMethod<T> {
     /// Convert to a [`ButcherTableau<U>`] by casting each coefficient.
     pub fn to_tableau<U: Float + FromPrimitive>(&self) -> ButcherTableau<U> {
-        build_tableau(self.a, self.b, self.b_hat, self.c)
+        let cast = |x: &T| -> U {
+            let f = x.to_f64().expect("Butcher tableau coefficient fits in f64");
+            FromPrimitive::from_f64(f).expect("Butcher tableau coefficient converts to target type")
+        };
+        let n_stages = self.c.len();
+        let mut a_arr = Vec::with_capacity(n_stages * n_stages);
+        for row in self.a {
+            for val in *row {
+                a_arr.push(cast(val));
+            }
+        }
+        let a = Array2::from_shape_vec((n_stages, n_stages), a_arr)
+            .expect("Butcher tableau A matrix is square");
+        let b: Array1<U> = self.b.iter().map(cast).collect();
+        let b_hat: Array1<U> = self.b_hat.iter().map(cast).collect();
+        let c: Array1<U> = self.c.iter().map(cast).collect();
+        ButcherTableau { a, b, b_hat, c }
     }
 }
 
@@ -205,42 +221,3 @@ pub const DORMAND_PRINCE45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMe
     ],
     c: &[0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0],
 };
-
-/// Build a [`ButcherTableau`] from coefficient slices.
-///
-/// # Parameters
-/// * `a_coeffs` — Row slices of the Runge–Kutta matrix (padded with zeros to form a square).
-/// * `b_coeffs` — Higher-order weight coefficients.
-/// * `b_hat_coeffs` — Lower-order embedded weight coefficients (for adaptive error estimation).
-/// * `c_coeffs` — Node position coefficients.
-pub fn build_tableau<T, U>(
-    a_coeffs: &[&[T]],
-    b_coeffs: &[T],
-    b_hat_coeffs: &[T],
-    c_coeffs: &[T],
-) -> ButcherTableau<U>
-where
-    T: Float,
-    U: Float + FromPrimitive,
-{
-    let cast = |x: &T| -> U {
-        let f = x.to_f64().expect("Butcher tableau coefficient fits in f64");
-        FromPrimitive::from_f64(f).expect("Butcher tableau coefficient converts to target type")
-    };
-
-    let n_stages = c_coeffs.len();
-    let mut a_arr = Vec::with_capacity(n_stages * n_stages);
-    for row in a_coeffs {
-        for val in *row {
-            a_arr.push(cast(val));
-        }
-    }
-    let a = Matrix::from_shape_vec((n_stages, n_stages), a_arr)
-        .expect("Butcher tableau A matrix is square");
-
-    let b: Array1<U> = b_coeffs.iter().map(cast).collect();
-    let b_hat: Array1<U> = b_hat_coeffs.iter().map(cast).collect();
-    let c: Array1<U> = c_coeffs.iter().map(cast).collect();
-
-    ButcherTableau { a, b, b_hat, c }
-}
