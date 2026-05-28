@@ -7,6 +7,7 @@ use num_traits::Float;
 /// * `t` — Time points at which the solution was evaluated.
 /// * `u` — State trajectories as a matrix of shape `(n_vars, n_times)` — each row is one
 ///   variable's trajectory across all time points.
+#[derive(Debug, Clone)]
 pub struct ODESolution<T> {
     /// Time points at which the solution was evaluated.
     pub t: Box<[T]>,
