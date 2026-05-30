@@ -1,89 +1,186 @@
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use ndarray::Array1;
-use ndarray::array;
-use raznur::{ODEProblem, RUNGE_KUTTA_1, RUNGE_KUTTA_2, RUNGE_KUTTA_4, solve};
+use criterion::{Criterion, Throughput, black_box, criterion_group, criterion_main};
+use ndarray::{Array1, array};
+use raznur::{
+    DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, ODEProblem, RUNGE_KUTTA_1,
+    RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5, solve, solve_adaptive,
+};
 
-fn ode_solver(c: &mut Criterion) {
-    let mut group = c.benchmark_group("solver");
+type ERKMethod = ExplicitRungeKuttaMethod<f64>;
 
-    let prob_f32 = ODEProblem {
+const ALL_METHODS: &[(&str, &ERKMethod)] = &[
+    ("RK1", &RUNGE_KUTTA_1),
+    ("RK2", &RUNGE_KUTTA_2),
+    ("RK3", &RUNGE_KUTTA_3),
+    ("RK4", &RUNGE_KUTTA_4),
+    ("RK5", &RUNGE_KUTTA_5),
+    ("Fehlberg45", &FEHLBERG45),
+    ("DP45", &DORMAND_PRINCE45),
+];
+
+const ADAPTIVE_METHODS: &[(&str, &ERKMethod)] =
+    &[("Fehlberg45", &FEHLBERG45), ("DP45", &DORMAND_PRINCE45)];
+
+// --- Problem definitions ---
+
+fn linear_f32() -> ODEProblem<f32, impl Fn(f32, &Array1<f32>) -> Array1<f32>> {
+    ODEProblem {
         f: |x: f32, y: &Array1<f32>| -> Array1<f32> { array![2.0 * x + y[0]] },
         u0: array![1.0],
         tspan: (1.0, 10.0),
-    };
-    let prob_f64 = ODEProblem {
+    }
+}
+
+fn linear_f64() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
+    ODEProblem {
         f: |x: f64, y: &Array1<f64>| -> Array1<f64> { array![2.0 * x + y[0]] },
         u0: array![1.0],
         tspan: (1.0, 10.0),
-    };
-
-    for (name, method) in [
-        ("RK1", &RUNGE_KUTTA_1 as &_),
-        ("RK2", &RUNGE_KUTTA_2 as &_),
-        ("RK4", &RUNGE_KUTTA_4 as &_),
-    ] {
-        group.bench_function(format!("{name}_f64_coarse"), |b| {
-            b.iter(|| solve(black_box(&prob_f64), method, black_box(0.1)))
-        });
-        group.bench_function(format!("{name}_f64_fine"), |b| {
-            b.iter(|| solve(black_box(&prob_f64), method, black_box(0.01)))
-        });
-        group.bench_function(format!("{name}_f32_coarse"), |b| {
-            b.iter(|| solve(black_box(&prob_f32), method, black_box(0.1)))
-        });
-        group.bench_function(format!("{name}_f32_fine"), |b| {
-            b.iter(|| solve(black_box(&prob_f32), method, black_box(0.01)))
-        });
     }
-
-    group.finish();
 }
 
-fn ode_solver_large(c: &mut Criterion) {
-    let mut group = c.benchmark_group("large_problem");
+fn oscillator() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
+    ODEProblem {
+        f: |_x: f64, y: &Array1<f64>| -> Array1<f64> { array![y[1], -y[0]] },
+        u0: array![0.0, 1.0],
+        tspan: (0.0, 100.0),
+    }
+}
 
-    let prob_f64 = ODEProblem {
+fn large_problem() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
+    ODEProblem {
         f: |x: f64, y: &Array1<f64>| -> Array1<f64> { array![(x + y[0]).sin() * y[0].cos()] },
         u0: array![0.5],
         tspan: (0.0, 100.0),
-    };
+    }
+}
 
-    for (name, method) in [
-        ("RK1", &RUNGE_KUTTA_1 as &_),
-        ("RK2", &RUNGE_KUTTA_2 as &_),
-        ("RK4", &RUNGE_KUTTA_4 as &_),
-    ] {
-        group.bench_function(format!("{name}_100k_steps"), |b| {
-            b.iter(|| solve(black_box(&prob_f64), method, black_box(0.001)))
+// --- Benchmark groups ---
+
+fn bench_fixed_step(c: &mut Criterion) {
+    let mut group = c.benchmark_group("fixed_step");
+    let p32 = linear_f32();
+    let p64 = linear_f64();
+
+    for (name, method) in ALL_METHODS {
+        for &(label, dt) in &[("coarse", 0.1f64), ("fine", 0.01f64)] {
+            let n_steps = ((p64.tspan.1 - p64.tspan.0) / dt) as usize;
+            let n_times = n_steps + 1;
+
+            group.throughput(Throughput::Bytes(
+                (std::mem::size_of::<f32>() * (n_times * 2)) as u64,
+            ));
+            group.bench_function(format!("{name}_f32_{label}"), |b| {
+                b.iter(|| solve(black_box(&p32), method, black_box(dt as f32)))
+            });
+
+            group.throughput(Throughput::Bytes(
+                (std::mem::size_of::<f64>() * (n_times * 2)) as u64,
+            ));
+            group.bench_function(format!("{name}_f64_{label}"), |b| {
+                b.iter(|| solve(black_box(&p64), method, black_box(dt)))
+            });
+        }
+    }
+    group.finish();
+}
+
+fn bench_adaptive(c: &mut Criterion) {
+    let mut group = c.benchmark_group("adaptive");
+    let p32 = linear_f32();
+    let p64 = linear_f64();
+
+    for (name, method) in ADAPTIVE_METHODS {
+        group.bench_function(format!("{name}_f32"), |b| {
+            b.iter(|| {
+                solve_adaptive(
+                    black_box(&p32),
+                    method,
+                    black_box(0.1f32),
+                    black_box(1e-4f32),
+                    black_box(1e-4f32),
+                )
+            })
+        });
+        group.bench_function(format!("{name}_f64"), |b| {
+            b.iter(|| {
+                solve_adaptive(
+                    black_box(&p64),
+                    method,
+                    black_box(0.1f64),
+                    black_box(1e-8f64),
+                    black_box(1e-8f64),
+                )
+            })
+        });
+    }
+    group.finish();
+}
+
+fn bench_system(c: &mut Criterion) {
+    let mut group = c.benchmark_group("system");
+    let prob = oscillator();
+
+    for (name, method) in ALL_METHODS {
+        group.throughput(Throughput::Bytes(
+            (std::mem::size_of::<f64>() * 3 * 10_001usize) as u64,
+        ));
+        group.bench_function(format!("{name}_fixed"), |b| {
+            b.iter(|| solve(black_box(&prob), method, black_box(0.01)))
         });
     }
 
+    for (name, method) in ADAPTIVE_METHODS {
+        group.bench_function(format!("{name}_adaptive"), |b| {
+            b.iter(|| {
+                solve_adaptive(
+                    black_box(&prob),
+                    method,
+                    black_box(0.01),
+                    black_box(1e-6),
+                    black_box(1e-6),
+                )
+            })
+        });
+    }
     group.finish();
 }
 
-fn precision_compare(c: &mut Criterion) {
-    let mut group = c.benchmark_group("precision");
+fn bench_large(c: &mut Criterion) {
+    let mut group = c.benchmark_group("large");
+    let prob = large_problem();
+    let n_times = 100_001usize;
 
-    let prob_f32 = ODEProblem {
-        f: |x: f32, y: &Array1<f32>| -> Array1<f32> { array![2.0 * x + y[0]] },
-        u0: array![1.0],
-        tspan: (1.0, 10.0),
-    };
-    let prob_f64 = ODEProblem {
-        f: |x: f64, y: &Array1<f64>| -> Array1<f64> { array![2.0 * x + y[0]] },
-        u0: array![1.0],
-        tspan: (1.0, 10.0),
-    };
+    for (name, method) in ALL_METHODS {
+        group.throughput(Throughput::Bytes(
+            (std::mem::size_of::<f64>() * 2 * n_times) as u64,
+        ));
+        group.bench_function(format!("{name}_100k"), |b| {
+            b.iter(|| solve(black_box(&prob), method, black_box(0.001)))
+        });
+    }
+    group.finish();
+}
+
+fn bench_precision(c: &mut Criterion) {
+    let mut group = c.benchmark_group("precision");
+    let p32 = linear_f32();
+    let p64 = linear_f64();
 
     group.bench_function("RK4_f32", |b| {
-        b.iter(|| solve(black_box(&prob_f32), &RUNGE_KUTTA_4, black_box(0.01)))
+        b.iter(|| solve(black_box(&p32), &RUNGE_KUTTA_4, black_box(0.01)))
     });
     group.bench_function("RK4_f64", |b| {
-        b.iter(|| solve(black_box(&prob_f64), &RUNGE_KUTTA_4, black_box(0.01)))
+        b.iter(|| solve(black_box(&p64), &RUNGE_KUTTA_4, black_box(0.01)))
     });
-
     group.finish();
 }
 
-criterion_group!(benches, ode_solver, ode_solver_large, precision_compare);
+criterion_group!(
+    benches,
+    bench_fixed_step,
+    bench_adaptive,
+    bench_system,
+    bench_large,
+    bench_precision,
+);
 criterion_main!(benches);
