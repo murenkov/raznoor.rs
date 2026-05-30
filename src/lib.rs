@@ -1,6 +1,21 @@
 #![warn(missing_docs)]
 
 //! Explicit Runge-Kutta ODE solver for scalar and system initial value problems.
+//!
+//! # Example
+//!
+//! ```
+//! use ndarray::array;
+//! use raznur::{ODEProblem, solve, RUNGE_KUTTA_4};
+//!
+//! let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
+//! let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
+//!
+//! let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+//! let y_last = sol.u[[0, sol.t.len() - 1]];
+//! let y_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
+//! assert!((y_last - y_exact).abs() < 1e-4);
+//! ```
 
 /// Types used by the ODE solver.
 pub mod types;

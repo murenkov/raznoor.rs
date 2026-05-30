@@ -57,6 +57,20 @@ fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> 
 ///
 /// # Returns
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
+///
+/// # Example
+///
+/// ```
+/// use ndarray::array;
+/// use raznur::{ODEProblem, solve, RUNGE_KUTTA_4};
+///
+/// let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
+/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
+/// let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+/// let y_last = sol.u[[0, sol.t.len() - 1]];
+/// let y_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
+/// assert!((y_last - y_exact).abs() < 1e-4);
+/// ```
 pub fn solve<T, F>(
     prob: &ODEProblem<T, F>,
     method: &ExplicitRungeKuttaMethod<f64>,
@@ -117,6 +131,20 @@ where
 /// # Returns
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories, or
 /// `Err(SolverError)` if the method does not provide distinct embedded coefficients.
+///
+/// # Example
+///
+/// ```
+/// use ndarray::array;
+/// use raznur::{ODEProblem, solve_adaptive, DORMAND_PRINCE45};
+///
+/// let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
+/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
+/// let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
+/// let y_last = sol.u[[0, sol.t.len() - 1]];
+/// let y_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
+/// assert!((y_last - y_exact).abs() < 1e-4);
+/// ```
 pub fn solve_adaptive<T, F>(
     prob: &ODEProblem<T, F>,
     method: &ExplicitRungeKuttaMethod<f64>,

@@ -23,6 +23,17 @@ const RK1_A: &[&[f64]] = &[
 ];
 
 /// Explicit Euler method (first-order Runge–Kutta).
+///
+/// # Example
+///
+/// ```
+/// use raznur::RUNGE_KUTTA_1;
+/// // First-order method: single stage, b coefficients sum to 1
+/// assert_eq!(RUNGE_KUTTA_1.b.len(), 1);
+/// assert!((RUNGE_KUTTA_1.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
+/// // Non-adaptive method: b and b_hat are identical
+/// assert_eq!(RUNGE_KUTTA_1.b, RUNGE_KUTTA_1.b_hat);
+/// ```
 pub const RUNGE_KUTTA_1: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
     a: RK1_A,
     b: &[1.0],
@@ -37,6 +48,16 @@ const RK2_A: &[&[f64]] = &[
 ];
 
 /// Explicit midpoint method (second-order Runge–Kutta).
+///
+/// # Example
+///
+/// ```
+/// use raznur::RUNGE_KUTTA_2;
+/// // Second-order method: 2 stages, b coefficients sum to 1
+/// assert_eq!(RUNGE_KUTTA_2.b.len(), 2);
+/// assert!((RUNGE_KUTTA_2.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
+/// assert_eq!(RUNGE_KUTTA_2.b, RUNGE_KUTTA_2.b_hat);
+/// ```
 pub const RUNGE_KUTTA_2: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
     a: RK2_A,
     b: &[0.5, 0.5],
@@ -52,6 +73,16 @@ const RK3_A: &[&[f64]] = &[
 ];
 
 /// Kutta's third-order Runge–Kutta method.
+///
+/// # Example
+///
+/// ```
+/// use raznur::RUNGE_KUTTA_3;
+/// // Third-order method: 3 stages, b coefficients sum to 1
+/// assert_eq!(RUNGE_KUTTA_3.b.len(), 3);
+/// assert!((RUNGE_KUTTA_3.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
+/// assert_eq!(RUNGE_KUTTA_3.b, RUNGE_KUTTA_3.b_hat);
+/// ```
 pub const RUNGE_KUTTA_3: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
     a: RK3_A,
     b: &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
@@ -68,6 +99,16 @@ const RK4_A: &[&[f64]] = &[
 ];
 
 /// Classical fourth-order Runge–Kutta method (RK4).
+///
+/// # Example
+///
+/// ```
+/// use raznur::RUNGE_KUTTA_4;
+/// // Fourth-order method: 4 stages, b coefficients sum to 1
+/// assert_eq!(RUNGE_KUTTA_4.b.len(), 4);
+/// assert!((RUNGE_KUTTA_4.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
+/// assert_eq!(RUNGE_KUTTA_4.b, RUNGE_KUTTA_4.b_hat);
+/// ```
 pub const RUNGE_KUTTA_4: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
     a: RK4_A,
     b: &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
@@ -86,6 +127,16 @@ const RK5_A: &[&[f64]] = &[
 ];
 
 /// Butcher's fifth-order Runge–Kutta method.
+///
+/// # Example
+///
+/// ```
+/// use raznur::RUNGE_KUTTA_5;
+/// // Fifth-order method: 6 stages, b coefficients sum to 1
+/// assert_eq!(RUNGE_KUTTA_5.b.len(), 6);
+/// assert!((RUNGE_KUTTA_5.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
+/// assert_eq!(RUNGE_KUTTA_5.b, RUNGE_KUTTA_5.b_hat);
+/// ```
 pub const RUNGE_KUTTA_5: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
     a: RK5_A,
     b: &[
@@ -127,6 +178,17 @@ const FEHLBERG45_A: &[&[f64]] = &[
 ];
 
 /// Fehlberg's embedded 4(5) method (RKF45).
+///
+/// # Example
+///
+/// ```
+/// use raznur::FEHLBERG45;
+/// // Embedded 4(5) method: 6 stages, b coefficients sum to 1
+/// assert_eq!(FEHLBERG45.b.len(), 6);
+/// assert!((FEHLBERG45.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
+/// // Adaptive method: b and b_hat are distinct
+/// assert_ne!(FEHLBERG45.b, FEHLBERG45.b_hat);
+/// ```
 pub const FEHLBERG45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
     a: FEHLBERG45_A,
     b: &[
@@ -160,6 +222,17 @@ const DORMAND_PRINCE45_A: &[&[f64]] = &[
 ];
 
 /// Dormand–Prince embedded 4(5) method (DOPRI54).
+///
+/// # Example
+///
+/// ```
+/// use raznur::DORMAND_PRINCE45;
+/// // Embedded 4(5) method: 7 stages, b coefficients sum to 1
+/// assert_eq!(DORMAND_PRINCE45.b.len(), 7);
+/// assert!((DORMAND_PRINCE45.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
+/// // Adaptive method: b and b_hat are distinct
+/// assert_ne!(DORMAND_PRINCE45.b, DORMAND_PRINCE45.b_hat);
+/// ```
 pub const DORMAND_PRINCE45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
     a: DORMAND_PRINCE45_A,
     b: &[
