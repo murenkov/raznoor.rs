@@ -212,4 +212,22 @@ mod tests {
         1e-6f64,
         1e-6f64
     );
+
+    macro_rules! adaptive_not_supported_test {
+        ($name:ident, $tableau:expr) => {
+            #[test]
+            fn $name() {
+                let (prob, _reference) = linear_problem::<f64>();
+                let result = solve_adaptive(&prob, &$tableau, 0.01, 1e-4, 1e-4);
+                assert!(result.is_err());
+                assert_eq!(result.unwrap_err(), SolverError::AdaptiveNotSupported);
+            }
+        };
+    }
+
+    adaptive_not_supported_test!(solve_adaptive_erk1_not_supported, RUNGE_KUTTA_1);
+    adaptive_not_supported_test!(solve_adaptive_erk2_not_supported, RUNGE_KUTTA_2);
+    adaptive_not_supported_test!(solve_adaptive_erk3_not_supported, RUNGE_KUTTA_3);
+    adaptive_not_supported_test!(solve_adaptive_erk4_not_supported, RUNGE_KUTTA_4);
+    adaptive_not_supported_test!(solve_adaptive_erk5_not_supported, RUNGE_KUTTA_5);
 }
