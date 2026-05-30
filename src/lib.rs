@@ -245,4 +245,195 @@ mod tests {
     adaptive_not_supported_test!(solve_adaptive_erk3_not_supported, RUNGE_KUTTA_3);
     adaptive_not_supported_test!(solve_adaptive_erk4_not_supported, RUNGE_KUTTA_4);
     adaptive_not_supported_test!(solve_adaptive_erk5_not_supported, RUNGE_KUTTA_5);
+
+    // ── Edge-case tests for solve() ──
+
+    #[test]
+    fn solve_zero_dt() {
+        let f = |_t: f64, _y: &Array1<f64>| array![0.0];
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+        let result = solve(&prob, &RUNGE_KUTTA_4, 0.0);
+        assert!(result.is_ok(), "solve with dt=0 should not panic");
+    }
+
+    #[test]
+    fn solve_negative_dt() {
+        let f = |_t: f64, _y: &Array1<f64>| array![0.0];
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+        let result = solve(&prob, &RUNGE_KUTTA_4, -0.01);
+        assert!(result.is_ok(), "solve with negative dt should not panic");
+    }
+
+    #[test]
+    fn solve_dt_larger_than_tspan() {
+        let f = |_t: f64, _y: &Array1<f64>| array![0.0];
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 2.0).unwrap();
+        assert_eq!(
+            sol.t.len(),
+            2,
+            "dt larger than tspan should produce exactly 2 time points"
+        );
+        assert!((sol.t[0] - 0.0).abs() < f64::EPSILON);
+        assert!((sol.t[1] - 1.0).abs() < f64::EPSILON);
+        assert!(
+            (sol.u[[0, 1]] - 1.0).abs() < f64::EPSILON,
+            "solution should remain at u0"
+        );
+    }
+
+    #[test]
+    fn solve_nan_initial_condition() {
+        let f = |_t: f64, _y: &Array1<f64>| array![0.0];
+        let prob = ODEProblem::new(f, array![f64::NAN], (0.0, 1.0));
+        let result = solve(&prob, &RUNGE_KUTTA_4, 0.1);
+        assert!(
+            result.is_ok(),
+            "solve with NaN initial condition should not panic"
+        );
+    }
+
+    #[test]
+    fn solve_inf_initial_condition() {
+        let f = |_t: f64, _y: &Array1<f64>| array![0.0];
+        let prob = ODEProblem::new(f, array![f64::INFINITY], (0.0, 1.0));
+        let result = solve(&prob, &RUNGE_KUTTA_4, 0.1);
+        assert!(
+            result.is_ok(),
+            "solve with Inf initial condition should not panic"
+        );
+    }
+
+    #[test]
+    fn solve_empty_system() {
+        let f = |_t: f64, _y: &Array1<f64>| Array1::<f64>::zeros(0);
+        let prob = ODEProblem::new(f, Array1::<f64>::zeros(0), (0.0, 1.0));
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.1).unwrap();
+        assert_eq!(sol.u.nrows(), 0, "empty system should have 0 variables");
+        assert!(sol.t.len() >= 2, "should have at least 2 time points");
+    }
+
+    #[test]
+    fn solve_negative_direction() {
+        let f = |_t: f64, _y: &Array1<f64>| array![0.0];
+        let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0));
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.1).unwrap();
+        assert!(
+            (sol.t[0] - 1.0).abs() < f64::EPSILON,
+            "first time point should be t0"
+        );
+        assert!(
+            (sol.t[sol.t.len() - 1] - 0.0).abs() < f64::EPSILON,
+            "last time point should be tf"
+        );
+        for i in 1..sol.t.len() {
+            assert!(
+                sol.t[i] < sol.t[i - 1],
+                "time should be monotonically decreasing"
+            );
+        }
+    }
+
+    // ── Edge-case tests for solve_adaptive() ──
+
+    #[test]
+    fn solve_adaptive_nan_initial_condition() {
+        let f = |_t: f64, _y: &Array1<f64>| array![0.0];
+        let prob = ODEProblem::new(f, array![f64::NAN], (0.0, 0.0));
+        let result = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6);
+        assert!(
+            result.is_ok(),
+            "adaptive solve with NaN initial condition should not panic"
+        );
+    }
+
+    #[test]
+    fn solve_adaptive_inf_initial_condition() {
+        let f = |_t: f64, _y: &Array1<f64>| array![0.0];
+        let prob = ODEProblem::new(f, array![f64::INFINITY], (0.0, 0.0));
+        let result = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6);
+        assert!(
+            result.is_ok(),
+            "adaptive solve with Inf initial condition should not panic"
+        );
+    }
+
+    #[test]
+    fn solve_adaptive_negative_direction() {
+        let f = |_t: f64, _y: &Array1<f64>| array![0.0];
+        let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0));
+        let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
+        assert_eq!(sol.u.nrows(), 1);
+        assert!(
+            (sol.t[0] - 1.0).abs() < f64::EPSILON,
+            "first time point should be t0"
+        );
+        assert!(
+            (sol.t[sol.t.len() - 1] - 0.0).abs() < f64::EPSILON,
+            "last time point should be tf"
+        );
+    }
+
+    #[test]
+    fn solve_adaptive_tight_tolerances() {
+        let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1000.0));
+        let result = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-14, 1e-14);
+        assert!(
+            result.is_ok(),
+            "adaptive solve with tight tolerances should not panic"
+        );
+        let sol = result.unwrap();
+        assert_eq!(sol.u.nrows(), 1);
+        assert!(sol.t.len() > 1, "should produce at least 2 time points");
+    }
+
+    // ── Property-based tests ──
+
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn solve_property_positive_dt(
+            dt in 1e-4f64..0.5f64,
+            n_vars in 1usize..5,
+        ) {
+            let u0 = Array1::<f64>::ones(n_vars);
+            let f = |_t: f64, y: &Array1<f64>| -y.clone();
+            let prob = ODEProblem::new(f, u0, (0.0, 1.0));
+            let sol = solve(&prob, &RUNGE_KUTTA_4, dt).unwrap();
+            prop_assert_eq!(sol.u.nrows(), n_vars, "number of solution variables should match");
+            prop_assert!((sol.t[0] - 0.0).abs() < 1e-10, "first time point should be t0");
+            prop_assert!((sol.t[sol.t.len() - 1] - 1.0).abs() < 1e-10, "last time point should be tf");
+        }
+
+        #[test]
+        fn solve_property_tspan(
+            dt in 1e-4f64..0.1f64,
+        ) {
+            let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+            let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+            let sol = solve(&prob, &RUNGE_KUTTA_4, dt).unwrap();
+            let n = sol.t.len();
+            prop_assert!((sol.t[0] - 0.0).abs() < 1e-10, "first time point should be t0");
+            prop_assert!((sol.t[n - 1] - 1.0).abs() < 1e-10, "last time point should be tf");
+            for i in 1..n {
+                prop_assert!(sol.t[i] > sol.t[i - 1], "time should be monotonically increasing");
+            }
+        }
+
+        #[test]
+        fn solve_adaptive_property(
+            atol in 1e-12f64..1e-6f64,
+            rtol in 1e-12f64..1e-6f64,
+        ) {
+            let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+            let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+            let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, atol, rtol).unwrap();
+            prop_assert_eq!(sol.u.nrows(), 1, "should have 1 variable");
+            prop_assert!(sol.t.len() > 1, "should produce at least 2 time points");
+            prop_assert!((sol.t[0] - 0.0).abs() < 1e-10, "first time point should be t0");
+            prop_assert!((sol.t[sol.t.len() - 1] - 1.0).abs() < 1e-10, "last time point should be tf");
+        }
+    }
 }
