@@ -52,7 +52,7 @@ fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> 
 /// # Parameters
 /// * `prob` — The ODE problem definition containing the right-hand side, initial condition,
 ///   and time span.
-/// * `method` — The Runge-Kutta method to use (e.g. [`RUNGE_KUTTA_4`]).
+/// * `method` — The Runge-Kutta method to use (e.g. [`crate::RUNGE_KUTTA_4`]).
 /// * `dt` — The fixed step size for time-stepping.
 ///
 /// # Returns
@@ -109,7 +109,7 @@ where
 ///
 /// # Parameters
 /// * `prob` — The ODE problem definition.
-/// * `method` — An embedded Runge–Kutta pair (e.g. [`FEHLBERG45`], [`DORMAND_PRINCE45`]).
+/// * `method` — An embedded Runge–Kutta pair (e.g. [`crate::FEHLBERG45`], [`crate::DORMAND_PRINCE45`]).
 /// * `h0` — Initial step size guess.
 /// * `atol` — Absolute tolerance for the error per step.
 /// * `rtol` — Relative tolerance for the error per step.
