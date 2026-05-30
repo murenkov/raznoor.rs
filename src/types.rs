@@ -28,6 +28,18 @@ impl<T> ODESolution<T> {
 /// Errors that can occur during ODE solving.
 ///
 /// This enum is non-exhaustive; new variants may be added in future releases.
+///
+/// # Example
+///
+/// ```
+/// use ndarray::array;
+/// use raznur::{ODEProblem, solve_adaptive, RUNGE_KUTTA_1, SolverError};
+///
+/// let f = |x: f64, y: &ndarray::Array1<f64>| array![0.0];
+/// let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0));
+/// let result = solve_adaptive(&prob, &RUNGE_KUTTA_1, 0.01, 1e-4, 1e-4);
+/// assert!(matches!(result, Err(SolverError::AdaptiveNotSupported)));
+/// ```
 #[derive(Debug, PartialEq)]
 #[non_exhaustive]
 pub enum SolverError {
