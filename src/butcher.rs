@@ -1,8 +1,11 @@
 /// An explicit Runge–Kutta method defined by its Butcher tableau coefficients.
 ///
+/// This struct is `#[non_exhaustive]`; new fields may be added in future releases.
+///
 /// Stores coefficients as static slices so that well-known methods can be
 /// provided as `const` values.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct ExplicitRungeKuttaMethod<T: 'static> {
     /// Runge-Kutta matrix (row slices of the lower-triangular part).
     pub a: &'static [&'static [T]],
