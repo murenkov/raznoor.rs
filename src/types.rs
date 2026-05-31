@@ -45,6 +45,8 @@ impl<T> ODESolution<T> {
 pub enum SolverError {
     /// Adaptive step-size control is not supported for the given algorithm.
     AdaptiveNotSupported,
+    /// The provided step size is zero, which would prevent the solver from advancing.
+    InvalidStepSize,
 }
 
 impl std::fmt::Display for SolverError {
@@ -52,6 +54,9 @@ impl std::fmt::Display for SolverError {
         match self {
             SolverError::AdaptiveNotSupported => {
                 write!(f, "adaptive stepping not supported for this algorithm")
+            }
+            SolverError::InvalidStepSize => {
+                write!(f, "step size must be non-zero")
             }
         }
     }

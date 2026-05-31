@@ -80,6 +80,9 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
+    if dt == T::zero() {
+        return Err(SolverError::InvalidStepSize);
+    }
     let n_steps =
         num_traits::cast::<T, usize>(((prob.tspan.1 - prob.tspan.0) / dt).floor()).unwrap_or(0);
     let mut xs: Vec<T> = Vec::with_capacity(n_steps + 2);
@@ -156,6 +159,9 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
+    if h0 == T::zero() {
+        return Err(SolverError::InvalidStepSize);
+    }
     if method.b == method.b_hat {
         return Err(SolverError::AdaptiveNotSupported);
     }
