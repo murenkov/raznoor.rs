@@ -35,6 +35,8 @@ Run the test suite with:
 
 All tests must pass before a pull request is merged.
 
+Benchmark results are automatically tracked across commits via the `Benchmarks` GitHub Actions workflow. A dashboard with historical performance charts is available on the repository's GitHub Pages site (enable Pages in repo settings, source: `gh-pages` branch).
+
 ## Pull Requests
 
 - Open PRs against the `main` branch.
