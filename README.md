@@ -6,6 +6,7 @@ A Rust library for solving ordinary differential equations (ODEs) using explicit
 
 - Explicit Runge-Kutta methods of orders 1 through 5
 - Adaptive embedded Runge-Kutta pairs (Fehlberg45, Dormand–Prince45)
+- Event detection (root-finding during integration) with terminal and directional events
 - Generic over floating-point types (`f32`, `f64`)
 - Error handling via `SolverError` instead of panics
 

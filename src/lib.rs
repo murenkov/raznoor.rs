@@ -18,6 +18,33 @@
 //! let y_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
 //! assert!((y_last - y_exact).abs() < 1e-4);
 //! ```
+//!
+//! # Events
+//!
+//! Event detection allows you to monitor zero-crossings of a function `g(t, y)`
+//! during integration. Terminal events stop the solver at the crossing time.
+//!
+//! ```
+//! use ndarray::array;
+//! use ndarray::Array1;
+//! use raznur::{Event, EventDirection, ODEProblem, solve, RUNGE_KUTTA_4};
+//!
+//! let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+//!
+//! let event = Event::new(
+//!     Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
+//!     true,
+//!     EventDirection::Any,
+//! );
+//!
+//! let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+//!     .with_events(vec![event]);
+//!
+//! let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+//! // Integration stops at t ≈ ln(2) where y(t) = 0.5
+//! assert!((sol.t[sol.t.len() - 1] - (2.0_f64).ln()).abs() < 0.01);
+//! assert_eq!(sol.events.len(), 1);
+//! ```
 
 /// Types used by the ODE solver.
 pub mod types;
@@ -33,7 +60,7 @@ pub use butcher::{
     RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
 };
 pub use solver::{solve, solve_adaptive};
-pub use types::{ODEProblem, ODESolution, SolverError};
+pub use types::{Event, EventDirection, EventRecord, ODEProblem, ODESolution, SolverError};
 
 #[cfg(test)]
 mod tests {
@@ -66,6 +93,7 @@ mod tests {
             f,
             u0: array![T::from_f64(1.0).unwrap()],
             tspan: (T::from_f64(1.0).unwrap(), T::from_f64(1.1).unwrap()),
+            events: Vec::new(),
         };
         let ys: Vec<T> = (0..11)
             .map(|i| {
@@ -90,6 +118,7 @@ mod tests {
             f,
             u0: array![T::from_f64(0.0).unwrap(), T::from_f64(1.0).unwrap()],
             tspan: (T::from_f64(0.0).unwrap(), half_pi),
+            events: Vec::new(),
         };
         let mut xs: Vec<T> = Vec::with_capacity(n_steps + 2);
         xs.push(T::from_f64(0.0).unwrap());
@@ -443,5 +472,167 @@ mod tests {
             prop_assert!((sol.t[0] - prob.tspan.0).abs() < f64::EPSILON, "first time point should be t0");
             prop_assert!((sol.t[sol.t.len() - 1] - prob.tspan.1).abs() < f64::EPSILON, "last time point should be tf");
         }
+    }
+
+    // ── Event detection tests ──
+
+    #[test]
+    fn event_terminal_fixed() {
+        let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+        let event = Event::new(
+            Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
+            true,
+            EventDirection::Any,
+        );
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let expected = (2.0_f64).ln();
+        assert!(
+            (sol.t[sol.t.len() - 1] - expected).abs() < 0.01,
+            "terminal event at t={} should be near ln(2)={}",
+            sol.t[sol.t.len() - 1],
+            expected
+        );
+        assert!(!sol.events.is_empty(), "should have recorded an event");
+        assert!(
+            (sol.events[0].t - expected).abs() < 0.01,
+            "event time should be near ln(2)"
+        );
+    }
+
+    #[test]
+    fn event_non_terminal_fixed() {
+        let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+        let event = Event::new(
+            Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
+            false,
+            EventDirection::Any,
+        );
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        assert!(
+            (sol.t[sol.t.len() - 1] - 5.0).abs() < f64::EPSILON,
+            "non-terminal event should integrate to end of tspan"
+        );
+        assert!(!sol.events.is_empty(), "should have recorded an event");
+    }
+
+    #[test]
+    fn event_direction_decreasing() {
+        let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+        let event = Event::new(
+            Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
+            true,
+            EventDirection::Decreasing,
+        );
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        assert!(
+            (sol.t[sol.t.len() - 1] - (2.0_f64).ln()).abs() < 0.01,
+            "decreasing event should trigger at ln(2)"
+        );
+    }
+
+    #[test]
+    fn event_direction_increasing_no_crossing() {
+        let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+        let event = Event::new(
+            Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
+            true,
+            EventDirection::Increasing,
+        );
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        assert!(
+            (sol.t[sol.t.len() - 1] - 5.0).abs() < f64::EPSILON,
+            "increasing event should not trigger on decreasing function"
+        );
+        assert!(sol.events.is_empty(), "no events should be recorded");
+    }
+
+    #[test]
+    fn event_no_crossing() {
+        let f = |_t: f64, _y: &Array1<f64>| array![1.0];
+        let event = Event::new(
+            Box::new(|_t: f64, y: &Array1<f64>| y[0] + 1.0),
+            true,
+            EventDirection::Any,
+        );
+        let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0)).with_events(vec![event]);
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        assert!(
+            (sol.t[sol.t.len() - 1] - 1.0).abs() < f64::EPSILON,
+            "no event should fire"
+        );
+        assert!(sol.events.is_empty(), "no events should be recorded");
+    }
+
+    #[test]
+    fn event_terminal_adaptive() {
+        let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+        let event = Event::new(
+            Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
+            true,
+            EventDirection::Any,
+        );
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
+        let expected = (2.0_f64).ln();
+        assert!(
+            (sol.t[sol.t.len() - 1] - expected).abs() < 0.01,
+            "terminal adaptive event t={} should be near ln(2)={}",
+            sol.t[sol.t.len() - 1],
+            expected
+        );
+        assert!(!sol.events.is_empty(), "should have recorded an event");
+    }
+
+    #[test]
+    fn event_multiple_first_terminal_wins() {
+        let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+        let event_early = Event::new(
+            Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
+            true,
+            EventDirection::Any,
+        );
+        let event_late = Event::new(
+            Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.25),
+            true,
+            EventDirection::Any,
+        );
+        let prob =
+            ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event_late, event_early]);
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let expected = (2.0_f64).ln();
+        assert!(
+            (sol.t[sol.t.len() - 1] - expected).abs() < 0.01,
+            "should stop at earlier event (ln(2))"
+        );
+    }
+
+    #[test]
+    fn event_solution_field_populated() {
+        let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+        let event = Event::new(
+            Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
+            true,
+            EventDirection::Any,
+        );
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        assert_eq!(sol.events.len(), 1, "one event should be recorded");
+        assert_eq!(sol.events[0].event_index, 0);
+        assert!(
+            (sol.events[0].y[0] - 0.5).abs() < 0.01,
+            "y at event should be near 0.5"
+        );
+    }
+
+    #[test]
+    fn event_no_events_no_overhead() {
+        let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        assert!(sol.events.is_empty(), "no events should be recorded");
     }
 }
