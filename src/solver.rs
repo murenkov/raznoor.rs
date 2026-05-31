@@ -53,7 +53,9 @@ fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> 
 /// * `prob` — The ODE problem definition containing the right-hand side, initial condition,
 ///   and time span.
 /// * `method` — The Runge-Kutta method to use (e.g. [`crate::RUNGE_KUTTA_4`]).
-/// * `dt` — The fixed step size for time-stepping.
+/// * `dt` — The absolute step size for time-stepping. The direction of integration is
+///   determined by the order of the time span (i.e., `tspan.0` → `tspan.1`).
+///   Must be positive.
 ///
 /// # Returns
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
@@ -66,6 +68,7 @@ fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> 
 ///
 /// let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
 /// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
+///
 /// let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
 /// let y_last = sol.u[[0, sol.t.len() - 1]];
 /// let y_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
@@ -80,9 +83,14 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    if dt == T::zero() {
+    if dt <= T::zero() {
         return Err(SolverError::InvalidStepSize);
     }
+    let dt = if prob.tspan.1 >= prob.tspan.0 {
+        dt
+    } else {
+        -dt
+    };
     let n_steps =
         num_traits::cast::<T, usize>(((prob.tspan.1 - prob.tspan.0) / dt).floor()).unwrap_or(0);
     let mut xs: Vec<T> = Vec::with_capacity(n_steps + 2);

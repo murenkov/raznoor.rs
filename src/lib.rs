@@ -264,7 +264,10 @@ mod tests {
         let f = |_t: f64, _y: &Array1<f64>| array![0.0];
         let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
         let result = solve(&prob, &RUNGE_KUTTA_4, -0.01);
-        assert!(result.is_ok(), "solve with negative dt should not panic");
+        assert!(
+            matches!(result, Err(SolverError::InvalidStepSize)),
+            "solve with negative dt should return InvalidStepSize error"
+        );
     }
 
     #[test]
