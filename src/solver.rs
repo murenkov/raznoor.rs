@@ -277,10 +277,8 @@ where
             y = y_new;
             ts.push(t);
             us_data.extend(y.iter().copied());
-            h = h * fac;
-        } else {
-            h = h * fac;
         }
+        h = h * fac;
     }
 
     let n_times = ts.len();
