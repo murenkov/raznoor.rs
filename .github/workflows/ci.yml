@@ -26,5 +26,4 @@ jobs:
       - name: Install pre-commit
         uses: pre-commit/action@v3.0.1
 
-      - name: Run cargo bench
-        run: cargo bench
+
