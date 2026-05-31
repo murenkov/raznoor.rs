@@ -409,8 +409,8 @@ mod tests {
             let prob = ODEProblem::new(f, u0, (0.0, 1.0));
             let sol = solve(&prob, &RUNGE_KUTTA_4, dt).unwrap();
             prop_assert_eq!(sol.u.nrows(), n_vars, "number of solution variables should match");
-            prop_assert!((sol.t[0] - 0.0).abs() < 1e-10, "first time point should be t0");
-            prop_assert!((sol.t[sol.t.len() - 1] - 1.0).abs() < 1e-10, "last time point should be tf");
+            prop_assert!((sol.t[0] - prob.tspan.0).abs() < 1e-10, "first time point should be t0");
+            prop_assert!((sol.t[sol.t.len() - 1] - prob.tspan.1).abs() < 1e-10, "last time point should be tf");
         }
 
         #[test]
@@ -421,8 +421,8 @@ mod tests {
             let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
             let sol = solve(&prob, &RUNGE_KUTTA_4, dt).unwrap();
             let n = sol.t.len();
-            prop_assert!((sol.t[0] - 0.0).abs() < 1e-10, "first time point should be t0");
-            prop_assert!((sol.t[n - 1] - 1.0).abs() < 1e-10, "last time point should be tf");
+            prop_assert!((sol.t[0] - prob.tspan.0).abs() < 1e-10, "first time point should be t0");
+            prop_assert!((sol.t[n - 1] - prob.tspan.1).abs() < 1e-10, "last time point should be tf");
             for i in 1..n {
                 prop_assert!(sol.t[i] > sol.t[i - 1], "time should be monotonically increasing");
             }
@@ -438,8 +438,8 @@ mod tests {
             let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, atol, rtol).unwrap();
             prop_assert_eq!(sol.u.nrows(), 1, "should have 1 variable");
             prop_assert!(sol.t.len() > 1, "should produce at least 2 time points");
-            prop_assert!((sol.t[0] - 0.0).abs() < 1e-10, "first time point should be t0");
-            prop_assert!((sol.t[sol.t.len() - 1] - 1.0).abs() < 1e-10, "last time point should be tf");
+            prop_assert!((sol.t[0] - prob.tspan.0).abs() < 1e-10, "first time point should be t0");
+            prop_assert!((sol.t[sol.t.len() - 1] - prob.tspan.1).abs() < 1e-10, "last time point should be tf");
         }
     }
 }
