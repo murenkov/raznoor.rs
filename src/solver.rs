@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2};
+use ndarray::{Array1, Array2, ShapeBuilder};
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
@@ -126,19 +126,19 @@ where
 
     let mut ks = vec![Array1::<T>::zeros(n); stages];
     let mut arg = Array1::<T>::zeros(n);
+    let mut y = prob.u0.clone();
 
     for i in 0..n_steps - 1 {
         let h = xs[i + 1] - xs[i];
-        let y = u.column(i).to_owned();
         compute_stages(method, xs[i], h, &y, &mut arg, &mut ks, &prob.f);
 
         let update = weighted_sum(&ks, method.b);
+        let y_next = ndarray::Zip::from(&y)
+            .and(&update)
+            .map_collect(|&yv, &up| yv + h * up);
 
-        u.column_mut(i + 1).assign(
-            &ndarray::Zip::from(&y)
-                .and(&update)
-                .map_collect(|&yv, &up| yv + h * up),
-        );
+        u.column_mut(i + 1).assign(&y_next);
+        y = y_next;
     }
 
     Ok(ODESolution::<T> { t: xs.into(), u })
@@ -218,14 +218,14 @@ where
     let order_p1 = T::from_usize(5).unwrap();
 
     let mut ts: Vec<T> = Vec::new();
-    let mut us: Vec<Array1<T>> = Vec::new();
+    let mut us_data: Vec<T> = Vec::new();
 
     let mut t = t0;
     let mut y = prob.u0.clone();
     let mut h = h0.abs() * direction;
 
     ts.push(t);
-    us.push(y.clone());
+    us_data.extend(y.iter().copied());
 
     let mut ks = vec![Array1::<T>::zeros(n); stages];
     let mut arg = Array1::<T>::zeros(n);
@@ -274,7 +274,7 @@ where
             t = t + h;
             y = y_new;
             ts.push(t);
-            us.push(y.clone());
+            us_data.extend(y.iter().copied());
             h = h * fac;
         } else {
             h = h * fac;
@@ -282,10 +282,8 @@ where
     }
 
     let n_times = ts.len();
-    let mut u_arr = Array2::<T>::zeros((n, n_times));
-    for (i, state) in us.iter().enumerate() {
-        u_arr.column_mut(i).assign(state);
-    }
+    let u_arr =
+        Array2::from_shape_vec((n, n_times).f(), us_data).expect("state data length matches shape");
 
     Ok(ODESolution {
         t: ts.into(),
