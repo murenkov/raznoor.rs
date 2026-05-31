@@ -20,6 +20,7 @@ pub struct ODESolution<T> {
 
 impl<T> ODESolution<T> {
     /// Create a new ODE solution from time points and state trajectories.
+    #[must_use]
     pub fn new(t: Box<[T]>, u: Array2<T>) -> Self {
         Self { t, u }
     }

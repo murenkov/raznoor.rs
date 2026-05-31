@@ -249,7 +249,7 @@ pub const DORMAND_PRINCE45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMe
         0.0,
         7571.0 / 16695.0,
         393.0 / 640.0,
-        -92097.0 / 339200.0,
+        -92097.0 / 339_200.0,
         187.0 / 2100.0,
         1.0 / 40.0,
     ],
