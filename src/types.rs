@@ -1,6 +1,6 @@
 use ndarray::{Array1, Array2};
 
-/// Type alias for event function `g(t, y)`.
+/// Type alias for event function `g(t, u)`.
 type EventFn<T> = Box<dyn Fn(T, &Array1<T>) -> T>;
 
 /// The direction of a zero crossing to detect for an event function.
@@ -16,7 +16,7 @@ pub enum EventDirection {
 
 /// An event to detect during ODE integration.
 ///
-/// The event function `g(t, y)` is monitored at each integration step.
+/// The event function `g(t, u)` is monitored at each integration step.
 /// When a sign change is detected (matching the specified [`EventDirection`]),
 /// the solver locates the precise crossing time and records it.
 ///
@@ -29,7 +29,7 @@ pub enum EventDirection {
 /// use raznoor::{Event, EventDirection};
 ///
 /// let event = Event::new(
-///     Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
+///     Box::new(|_t: f64, u: &Array1<f64>| u[0] - 0.5),
 ///     true,
 ///     EventDirection::Any,
 /// );
@@ -63,7 +63,7 @@ pub struct EventRecord<T> {
     /// The time at which the event occurred.
     pub t: T,
     /// The state vector at the event time.
-    pub y: Array1<T>,
+    pub u: Array1<T>,
 }
 
 /// The solution of an ODE system, containing time points and state trajectories.
@@ -114,7 +114,7 @@ impl<T> ODESolution<T> {
 /// use ndarray::array;
 /// use raznoor::{ODEProblem, solve_adaptive, RUNGE_KUTTA_1, SolverError};
 ///
-/// let f = |x: f64, y: &ndarray::Array1<f64>| array![0.0];
+/// let f = |t: f64, u: &ndarray::Array1<f64>| array![0.0];
 /// let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0));
 /// let result = solve_adaptive(&prob, &RUNGE_KUTTA_1, 0.01, 1e-4, 1e-4);
 /// assert!(matches!(result, Err(SolverError::AdaptiveNotSupported)));

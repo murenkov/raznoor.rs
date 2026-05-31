@@ -19,18 +19,18 @@ Add `raznoor` to your `Cargo.toml`:
 raznoor = "0.2.0"
 ```
 
-Example solving `y' = 2x + y` with `y(1) = 1` over `[1.0, 1.1]`:
+Example solving `u' = 2t + u` with `u(1) = 1` over `[1.0, 1.1]`:
 
 ```rust
 use ndarray::array;
 use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
 
-let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
+let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
 let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
 
 let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
 for (t, u) in sol.t.iter().zip(sol.u.row(0).iter()) {
-    println!("t = {t:.2}, y = {u:.6}");
+    println!("t = {t:.2}, u = {u:.6}");
 }
 ```
 
