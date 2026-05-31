@@ -12,6 +12,11 @@ struct StepperContext<'a, T, F> {
     arg: &'a mut Array1<T>,
 }
 
+struct StepState<'a, T> {
+    t: T,
+    y: &'a Array1<T>,
+}
+
 fn compute_stages<T, F>(t: T, h: T, y: &Array1<T>, ctx: &mut StepperContext<T, F>)
 where
     T: Float + FromPrimitive,
@@ -98,10 +103,8 @@ where
 }
 
 fn detect_events<T, F>(
-    t_prev: T,
-    t_curr: T,
-    y_prev: &Array1<T>,
-    y_curr: &Array1<T>,
+    prev: &StepState<T>,
+    curr: &StepState<T>,
     events: &[Event<T>],
     ctx: &mut StepperContext<T, F>,
 ) -> Result<Vec<EventRecord<T>>, SolverError>
@@ -111,8 +114,8 @@ where
 {
     let mut candidates: Vec<(usize, &Event<T>, T)> = Vec::new();
     for (idx, event) in events.iter().enumerate() {
-        let g_prev = (event.g)(t_prev, y_prev);
-        let g_curr = (event.g)(t_curr, y_curr);
+        let g_prev = (event.g)(prev.t, prev.y);
+        let g_curr = (event.g)(curr.t, curr.y);
         if g_prev.is_nan() || g_prev.is_infinite() || g_curr.is_nan() || g_curr.is_infinite() {
             return Err(SolverError::EventError);
         }
@@ -130,7 +133,7 @@ where
     }
     let mut records: Vec<EventRecord<T>> = Vec::with_capacity(candidates.len());
     for (idx, event, g_prev) in candidates {
-        let (t_event, y_event) = bisect_event(t_prev, t_curr, y_prev, g_prev, &*event.g, ctx);
+        let (t_event, y_event) = bisect_event(prev.t, curr.t, prev.y, g_prev, &*event.g, ctx);
         records.push(EventRecord {
             event_index: idx,
             t: t_event,
@@ -255,7 +258,12 @@ where
                 .and(&update)
                 .map_collect(|&yv, &up| yv + h * up);
 
-            let detected = detect_events(t_prev, xs[i + 1], &y, &y_curr, &prob.events, &mut ctx)?;
+            let prev_state = StepState { t: t_prev, y: &y };
+            let curr_state = StepState {
+                t: xs[i + 1],
+                y: &y_curr,
+            };
+            let detected = detect_events(&prev_state, &curr_state, &prob.events, &mut ctx)?;
 
             if let Some(record) = detected.into_iter().next() {
                 let terminal = prob.events[record.event_index].terminal;
@@ -433,7 +441,12 @@ where
             let t_new = t_prev + h;
 
             if !prob.events.is_empty() {
-                let detected = detect_events(t_prev, t_new, &y, &y_new, &prob.events, &mut ctx)?;
+                let prev_state = StepState { t: t_prev, y: &y };
+                let curr_state = StepState {
+                    t: t_new,
+                    y: &y_new,
+                };
+                let detected = detect_events(&prev_state, &curr_state, &prob.events, &mut ctx)?;
 
                 if let Some(record) = detected.into_iter().next() {
                     let terminal = prob.events[record.event_index].terminal;
