@@ -16,7 +16,7 @@ Add `raznoor` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-raznoor = "0.1.0"
+raznoor = "0.2.0"
 ```
 
 Example solving `y' = 2x + y` with `y(1) = 1` over `[1.0, 1.1]`:
