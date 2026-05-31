@@ -48,7 +48,7 @@ fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> 
 }
 
 fn validate_initial_condition<T: Float>(u0: &Array1<T>) -> Result<(), SolverError> {
-    for &val in u0.iter() {
+    for &val in u0 {
         if val.is_nan() || val.is_infinite() {
             return Err(SolverError::InvalidInitialCondition);
         }
@@ -72,6 +72,9 @@ fn validate_initial_condition<T: Float>(u0: &Array1<T>) -> Result<(), SolverErro
 /// # Errors
 /// Returns `Err(SolverError::InvalidInitialCondition)` if the initial condition contains
 /// NaN or infinite values.
+///
+/// # Panics
+/// May panic if the step index cannot be represented in the numeric type.
 ///
 /// # Example
 ///
@@ -154,9 +157,16 @@ where
 /// * `rtol` — Relative tolerance for the error per step.
 ///
 /// # Returns
-/// `Ok(ODESolution<T>)` containing the time grid and state trajectories, or
-/// `Err(SolverError)` if the method does not provide distinct embedded coefficients
-/// or the initial condition contains NaN or infinite values.
+/// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
+///
+/// # Panics
+/// May panic if the safety factor or other constants cannot be converted from `f64`.
+///
+/// # Errors
+/// Returns `Err(SolverError::InvalidInitialCondition)` if the initial condition contains
+/// NaN or infinite values, `Err(SolverError::InvalidStepSize)` if `h0` is zero, or
+/// `Err(SolverError::AdaptiveNotSupported)` if the method does not provide distinct
+/// embedded coefficients.
 ///
 /// # Example
 ///

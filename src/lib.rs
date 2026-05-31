@@ -1,4 +1,6 @@
-#![warn(missing_docs)]
+#![deny(missing_docs)]
+#![deny(clippy::all)]
+#![deny(clippy::pedantic)]
 
 //! Explicit Runge-Kutta ODE solver for scalar and system initial value problems.
 //!
