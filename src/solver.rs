@@ -133,12 +133,14 @@ where
         compute_stages(method, xs[i], h, &y, &mut arg, &mut ks, &prob.f);
 
         let update = weighted_sum(&ks, method.b);
-        let y_next = ndarray::Zip::from(&y)
+        let mut col = u.column_mut(i + 1);
+        ndarray::Zip::from(&mut y)
+            .and(&mut col)
             .and(&update)
-            .map_collect(|&yv, &up| yv + h * up);
-
-        u.column_mut(i + 1).assign(&y_next);
-        y = y_next;
+            .for_each(|yv, next, &up| {
+                *yv = *yv + h * up;
+                *next = *yv;
+            });
     }
 
     Ok(ODESolution::<T> { t: xs.into(), u })
