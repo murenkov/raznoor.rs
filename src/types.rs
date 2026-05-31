@@ -1,5 +1,4 @@
 use ndarray::{Array1, Array2};
-use num_traits::Float;
 
 /// The solution of an ODE system, containing time points and state trajectories.
 ///
@@ -79,7 +78,7 @@ impl std::error::Error for SolverError {}
 /// * `u0` — The initial condition vector `u(t0)`.
 /// * `tspan` — The time span `(t0, t1)` over which to solve.
 #[non_exhaustive]
-pub struct ODEProblem<T: Float, F> {
+pub struct ODEProblem<T, F> {
     /// The right-hand side function `f(t, u)` defining the ODE `u' = f(t, u)`.
     pub f: F,
     /// The initial condition vector `u(t0)`.
@@ -88,7 +87,7 @@ pub struct ODEProblem<T: Float, F> {
     pub tspan: (T, T),
 }
 
-impl<T: Float, F> ODEProblem<T, F> {
+impl<T, F> ODEProblem<T, F> {
     /// Create a new ODE problem from a right-hand side function, initial condition,
     /// and time span.
     pub fn new(f: F, u0: Array1<T>, tspan: (T, T)) -> Self {
