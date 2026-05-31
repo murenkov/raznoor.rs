@@ -26,7 +26,7 @@ pub enum EventDirection {
 ///
 /// ```
 /// use ndarray::Array1;
-/// use raznur::{Event, EventDirection};
+/// use raznoor::{Event, EventDirection};
 ///
 /// let event = Event::new(
 ///     Box::new(|_t: f64, y: &Array1<f64>| y[0] - 0.5),
@@ -112,7 +112,7 @@ impl<T> ODESolution<T> {
 ///
 /// ```
 /// use ndarray::array;
-/// use raznur::{ODEProblem, solve_adaptive, RUNGE_KUTTA_1, SolverError};
+/// use raznoor::{ODEProblem, solve_adaptive, RUNGE_KUTTA_1, SolverError};
 ///
 /// let f = |x: f64, y: &ndarray::Array1<f64>| array![0.0];
 /// let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0));

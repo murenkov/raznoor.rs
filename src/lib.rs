@@ -8,7 +8,7 @@
 //!
 //! ```
 //! use ndarray::array;
-//! use raznur::{ODEProblem, solve, RUNGE_KUTTA_4};
+//! use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
 //!
 //! let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
 //! let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
@@ -27,7 +27,7 @@
 //! ```
 //! use ndarray::array;
 //! use ndarray::Array1;
-//! use raznur::{Event, EventDirection, ODEProblem, solve, RUNGE_KUTTA_4};
+//! use raznoor::{Event, EventDirection, ODEProblem, solve, RUNGE_KUTTA_4};
 //!
 //! let f = |_t: f64, y: &Array1<f64>| array![-y[0]];
 //!
