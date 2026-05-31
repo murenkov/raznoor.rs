@@ -47,6 +47,15 @@ fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> 
     sum
 }
 
+fn validate_initial_condition<T: Float>(u0: &Array1<T>) -> Result<(), SolverError> {
+    for &val in u0.iter() {
+        if val.is_nan() || val.is_infinite() {
+            return Err(SolverError::InvalidInitialCondition);
+        }
+    }
+    Ok(())
+}
+
 /// Solve an ODE problem using the given Runge-Kutta method and step size.
 ///
 /// # Parameters
@@ -59,6 +68,10 @@ fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> 
 ///
 /// # Returns
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
+///
+/// # Errors
+/// Returns `Err(SolverError::InvalidInitialCondition)` if the initial condition contains
+/// NaN or infinite values.
 ///
 /// # Example
 ///
@@ -83,6 +96,7 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
+    validate_initial_condition(&prob.u0)?;
     if dt <= T::zero() {
         return Err(SolverError::InvalidStepSize);
     }
@@ -141,7 +155,8 @@ where
 ///
 /// # Returns
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories, or
-/// `Err(SolverError)` if the method does not provide distinct embedded coefficients.
+/// `Err(SolverError)` if the method does not provide distinct embedded coefficients
+/// or the initial condition contains NaN or infinite values.
 ///
 /// # Example
 ///
@@ -167,6 +182,7 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
+    validate_initial_condition(&prob.u0)?;
     if h0 == T::zero() {
         return Err(SolverError::InvalidStepSize);
     }

@@ -47,6 +47,8 @@ pub enum SolverError {
     AdaptiveNotSupported,
     /// The provided step size is zero or negative.
     InvalidStepSize,
+    /// The initial condition contains NaN or infinite values.
+    InvalidInitialCondition,
 }
 
 impl std::fmt::Display for SolverError {
@@ -57,6 +59,9 @@ impl std::fmt::Display for SolverError {
             }
             SolverError::InvalidStepSize => {
                 write!(f, "step size must be positive")
+            }
+            SolverError::InvalidInitialCondition => {
+                write!(f, "initial condition contains NaN or infinite values")
             }
         }
     }
