@@ -14,26 +14,26 @@ struct StepperContext<'a, T, F> {
 
 struct StepState<'a, T> {
     t: T,
-    y: &'a Array1<T>,
+    u: &'a Array1<T>,
 }
 
-fn compute_stages<T, F>(t: T, h: T, y: &Array1<T>, ctx: &mut StepperContext<T, F>)
+fn compute_stages<T, F>(t: T, dt: T, u: &Array1<T>, ctx: &mut StepperContext<T, F>)
 where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
     let cast = |x: &f64| T::from_f64(*x).unwrap();
     for m in 0..ctx.method.c.len() {
-        ctx.arg.assign(y);
+        ctx.arg.assign(u);
         for (j, k) in ctx.ks.iter().enumerate() {
             let coeff = cast(&ctx.method.a[m][j]);
             if coeff != T::zero() {
                 ndarray::Zip::from(&mut *ctx.arg)
                     .and(k)
-                    .for_each(|a, &kv| *a = *a + h * coeff * kv);
+                    .for_each(|a, &kv| *a = *a + dt * coeff * kv);
             }
         }
-        ctx.ks[m] = (ctx.f)(t + cast(&ctx.method.c[m]) * h, ctx.arg);
+        ctx.ks[m] = (ctx.f)(t + cast(&ctx.method.c[m]) * dt, ctx.arg);
     }
 }
 
@@ -52,22 +52,22 @@ fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> 
     sum
 }
 
-fn advance<T, F>(t: T, h: T, y: &Array1<T>, ctx: &mut StepperContext<T, F>) -> Array1<T>
+fn advance<T, F>(t: T, dt: T, u: &Array1<T>, ctx: &mut StepperContext<T, F>) -> Array1<T>
 where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    compute_stages(t, h, y, ctx);
-    let update = weighted_sum(ctx.ks, ctx.method.b);
-    ndarray::Zip::from(y)
-        .and(&update)
-        .map_collect(|&yv, &up| yv + h * up)
+    compute_stages(t, dt, u, ctx);
+    let du = weighted_sum(ctx.ks, ctx.method.b);
+    ndarray::Zip::from(u)
+        .and(&du)
+        .map_collect(|&uv, &duv| uv + dt * duv)
 }
 
 fn bisect_event<T, F>(
     t_left: T,
     t_right: T,
-    y_left: &Array1<T>,
+    u_left: &Array1<T>,
     g_left: T,
     g: &dyn Fn(T, &Array1<T>) -> T,
     ctx: &mut StepperContext<T, F>,
@@ -78,16 +78,16 @@ where
 {
     let mut tl = t_left;
     let mut tr = t_right;
-    let mut yl = y_left.clone();
+    let mut ul = u_left.clone();
     let mut gl = g_left;
     for _ in 0..60 {
         let tm = (tl + tr) / T::from_f64(2.0).unwrap();
-        let ym = advance(tl, tm - tl, &yl, ctx);
-        let gm = g(tm, &ym);
+        let um = advance(tl, tm - tl, &ul, ctx);
+        let gm = g(tm, &um);
         let gm_pos = gm > T::zero();
         if gm_pos == (gl > T::zero()) {
             tl = tm;
-            yl = ym;
+            ul = um;
             gl = gm;
         } else {
             tr = tm;
@@ -98,8 +98,8 @@ where
             break;
         }
     }
-    let y_event = advance(tl, tr - tl, &yl, ctx);
-    (tr, y_event)
+    let u_event = advance(tl, tr - tl, &ul, ctx);
+    (tr, u_event)
 }
 
 fn detect_events<T, F>(
@@ -114,8 +114,8 @@ where
 {
     let mut candidates: Vec<(usize, &Event<T>, T)> = Vec::new();
     for (idx, event) in events.iter().enumerate() {
-        let g_prev = (event.g)(prev.t, prev.y);
-        let g_curr = (event.g)(curr.t, curr.y);
+        let g_prev = (event.g)(prev.t, prev.u);
+        let g_curr = (event.g)(curr.t, curr.u);
         if g_prev.is_nan() || g_prev.is_infinite() || g_curr.is_nan() || g_curr.is_infinite() {
             return Err(SolverError::EventError);
         }
@@ -133,11 +133,11 @@ where
     }
     let mut records: Vec<EventRecord<T>> = Vec::with_capacity(candidates.len());
     for (idx, event, g_prev) in candidates {
-        let (t_event, y_event) = bisect_event(prev.t, curr.t, prev.y, g_prev, &*event.g, ctx);
+        let (t_event, u_event) = bisect_event(prev.t, curr.t, prev.u, g_prev, &*event.g, ctx);
         records.push(EventRecord {
             event_index: idx,
             t: t_event,
-            y: y_event,
+            u: u_event,
         });
     }
     records.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap_or(std::cmp::Ordering::Equal));
@@ -183,13 +183,13 @@ fn validate_initial_condition<T: Float>(u0: &Array1<T>) -> Result<(), SolverErro
 /// use ndarray::array;
 /// use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
 ///
-/// let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
+/// let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
 /// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
 ///
 /// let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
-/// let y_last = sol.u[[0, sol.t.len() - 1]];
-/// let y_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
-/// assert!((y_last - y_exact).abs() < 1e-4);
+/// let u_last = sol.u[[0, sol.t.len() - 1]];
+/// let u_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
+/// assert!((u_last - u_exact).abs() < 1e-4);
 /// ```
 pub fn solve<T, F>(
     prob: &ODEProblem<T, F>,
@@ -211,15 +211,15 @@ where
     };
     let n_steps_floor =
         num_traits::cast::<T, usize>(((prob.tspan.1 - prob.tspan.0) / dt).floor()).unwrap_or(0);
-    let mut xs: Vec<T> = Vec::with_capacity(n_steps_floor + 2);
-    xs.push(prob.tspan.0);
+    let mut ts: Vec<T> = Vec::with_capacity(n_steps_floor + 2);
+    ts.push(prob.tspan.0);
     for i in 1..n_steps_floor {
-        xs.push(prob.tspan.0 + dt * T::from_usize(i).expect("step index fits in the numeric type"));
+        ts.push(prob.tspan.0 + dt * T::from_usize(i).expect("step index fits in the numeric type"));
     }
-    xs.push(prob.tspan.1);
+    ts.push(prob.tspan.1);
 
     let n = prob.u0.len();
-    let n_steps = xs.len();
+    let n_steps = ts.len();
     let stages = method.c.len();
 
     let mut u = Array2::<T>::zeros((n, n_steps));
@@ -227,7 +227,7 @@ where
 
     let mut ks = vec![Array1::<T>::zeros(n); stages];
     let mut arg = Array1::<T>::zeros(n);
-    let mut y = prob.u0.clone();
+    let mut u_curr = prob.u0.clone();
     let mut events: Vec<EventRecord<T>> = Vec::new();
     let mut final_step = n_steps;
     let mut ctx = StepperContext {
@@ -238,30 +238,33 @@ where
     };
 
     for i in 0..n_steps - 1 {
-        let h = xs[i + 1] - xs[i];
-        let t_prev = xs[i];
+        let dt = ts[i + 1] - ts[i];
+        let t_prev = ts[i];
 
-        compute_stages(t_prev, h, &y, &mut ctx);
-        let update = weighted_sum(ctx.ks, ctx.method.b);
+        compute_stages(t_prev, dt, &u_curr, &mut ctx);
+        let du = weighted_sum(ctx.ks, ctx.method.b);
 
         if prob.events.is_empty() {
             let mut col = u.column_mut(i + 1);
-            ndarray::Zip::from(&mut y)
+            ndarray::Zip::from(&mut u_curr)
                 .and(&mut col)
-                .and(&update)
-                .for_each(|yv, next, &up| {
-                    *yv = *yv + h * up;
-                    *next = *yv;
+                .and(&du)
+                .for_each(|uv, next, &duv| {
+                    *uv = *uv + dt * duv;
+                    *next = *uv;
                 });
         } else {
-            let y_curr = ndarray::Zip::from(&y)
-                .and(&update)
-                .map_collect(|&yv, &up| yv + h * up);
+            let u_new = ndarray::Zip::from(&u_curr)
+                .and(&du)
+                .map_collect(|&uv, &duv| uv + dt * duv);
 
-            let prev_state = StepState { t: t_prev, y: &y };
+            let prev_state = StepState {
+                t: t_prev,
+                u: &u_curr,
+            };
             let curr_state = StepState {
-                t: xs[i + 1],
-                y: &y_curr,
+                t: ts[i + 1],
+                u: &u_new,
             };
             let detected = detect_events(&prev_state, &curr_state, &prob.events, &mut ctx)?;
 
@@ -269,9 +272,9 @@ where
                 let terminal = prob.events[record.event_index].terminal;
                 events.push(record.clone());
 
-                xs[i + 1] = record.t;
-                u.column_mut(i + 1).assign(&record.y);
-                y = record.y;
+                ts[i + 1] = record.t;
+                u.column_mut(i + 1).assign(&record.u);
+                u_curr = record.u;
 
                 if terminal {
                     final_step = i + 2;
@@ -280,18 +283,18 @@ where
                 continue;
             }
 
-            u.column_mut(i + 1).assign(&y_curr);
-            y = y_curr;
+            u.column_mut(i + 1).assign(&u_new);
+            u_curr = u_new;
         }
     }
 
     if final_step < n_steps {
-        xs.truncate(final_step);
+        ts.truncate(final_step);
         u = u.slice(ndarray::s![.., ..final_step]).to_owned();
     }
 
     Ok(ODESolution {
-        t: xs.into(),
+        t: ts.into(),
         u,
         events,
     })
@@ -331,18 +334,18 @@ where
 /// use ndarray::array;
 /// use raznoor::{ODEProblem, solve_adaptive, DORMAND_PRINCE45};
 ///
-/// let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
+/// let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
 /// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
 /// let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
-/// let y_last = sol.u[[0, sol.t.len() - 1]];
-/// let y_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
-/// assert!((y_last - y_exact).abs() < 1e-4);
+/// let u_last = sol.u[[0, sol.t.len() - 1]];
+/// let u_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
+/// assert!((u_last - u_exact).abs() < 1e-4);
 /// ```
 #[allow(clippy::too_many_lines)]
 pub fn solve_adaptive<T, F>(
     prob: &ODEProblem<T, F>,
     method: &ExplicitRungeKuttaMethod<f64>,
-    h0: T,
+    dt: T,
     atol: T,
     rtol: T,
 ) -> Result<ODESolution<T>, SolverError>
@@ -351,7 +354,7 @@ where
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
     validate_initial_condition(&prob.u0)?;
-    if h0 == T::zero() {
+    if dt == T::zero() {
         return Err(SolverError::InvalidStepSize);
     }
     if method.b == method.b_hat {
@@ -379,12 +382,12 @@ where
     let mut us_data: Vec<T> = Vec::new();
 
     let mut t = t0;
-    let mut y = prob.u0.clone();
-    let mut h = h0.abs() * direction;
+    let mut u_curr = prob.u0.clone();
+    let mut dt_adaptive = dt.abs() * direction;
     let mut events: Vec<EventRecord<T>> = Vec::new();
 
     ts.push(t);
-    us_data.extend(y.iter().copied());
+    us_data.extend(u_curr.iter().copied());
 
     let mut ks = vec![Array1::<T>::zeros(n); stages];
     let mut arg = Array1::<T>::zeros(n);
@@ -400,25 +403,25 @@ where
             break;
         }
 
-        if (t + h - tf).abs() > (tf - t).abs() {
-            h = tf - t;
+        if (t + dt_adaptive - tf).abs() > (tf - t).abs() {
+            dt_adaptive = tf - t;
         }
 
         let t_prev = t;
 
-        compute_stages(t_prev, h, &y, &mut ctx);
+        compute_stages(t_prev, dt_adaptive, &u_curr, &mut ctx);
 
-        let update = weighted_sum(ctx.ks, ctx.method.b);
-        let err_diff = weighted_sum(ctx.ks, &b_diff);
+        let du = weighted_sum(ctx.ks, ctx.method.b);
+        let delta = weighted_sum(ctx.ks, &b_diff);
 
-        let y_new = ndarray::Zip::from(&y)
-            .and(&update)
-            .map_collect(|&yv, &up| yv + h * up);
+        let u_new = ndarray::Zip::from(&u_curr)
+            .and(&du)
+            .map_collect(|&uv, &duv| uv + dt_adaptive * duv);
 
         let mut err_sq = T::zero();
         for i in 0..n {
-            let e_i = (h * err_diff[i]).abs();
-            let scale = atol + rtol * y_new[i].abs();
+            let e_i = (dt_adaptive * delta[i]).abs();
+            let scale = atol + rtol * u_new[i].abs();
             let ratio = e_i / scale;
             err_sq = err_sq + ratio * ratio;
         }
@@ -438,13 +441,16 @@ where
         };
 
         if err <= T::one() {
-            let t_new = t_prev + h;
+            let t_new = t_prev + dt_adaptive;
 
             if !prob.events.is_empty() {
-                let prev_state = StepState { t: t_prev, y: &y };
+                let prev_state = StepState {
+                    t: t_prev,
+                    u: &u_curr,
+                };
                 let curr_state = StepState {
                     t: t_new,
-                    y: &y_new,
+                    u: &u_new,
                 };
                 let detected = detect_events(&prev_state, &curr_state, &prob.events, &mut ctx)?;
 
@@ -453,10 +459,10 @@ where
                     events.push(record.clone());
 
                     t = record.t;
-                    y = record.y;
+                    u_curr = record.u;
                     ts.push(t);
-                    us_data.extend(y.iter().copied());
-                    h = h * fac;
+                    us_data.extend(u_curr.iter().copied());
+                    dt_adaptive = dt_adaptive * fac;
 
                     if terminal {
                         break;
@@ -466,11 +472,11 @@ where
             }
 
             t = t_new;
-            y = y_new;
+            u_curr = u_new;
             ts.push(t);
-            us_data.extend(y.iter().copied());
+            us_data.extend(u_curr.iter().copied());
         }
-        h = h * fac;
+        dt_adaptive = dt_adaptive * fac;
     }
 
     let n_times = ts.len();

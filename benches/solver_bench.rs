@@ -24,7 +24,7 @@ const ADAPTIVE_METHODS: &[(&str, &ERKMethod)] =
 
 fn linear_f32() -> ODEProblem<f32, impl Fn(f32, &Array1<f32>) -> Array1<f32>> {
     ODEProblem::new(
-        |x: f32, y: &Array1<f32>| -> Array1<f32> { array![2.0 * x + y[0]] },
+        |t: f32, u: &Array1<f32>| -> Array1<f32> { array![2.0 * t + u[0]] },
         array![1.0],
         (1.0, 10.0),
     )
@@ -32,7 +32,7 @@ fn linear_f32() -> ODEProblem<f32, impl Fn(f32, &Array1<f32>) -> Array1<f32>> {
 
 fn linear_f64() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
     ODEProblem::new(
-        |x: f64, y: &Array1<f64>| -> Array1<f64> { array![2.0 * x + y[0]] },
+        |t: f64, u: &Array1<f64>| -> Array1<f64> { array![2.0 * t + u[0]] },
         array![1.0],
         (1.0, 10.0),
     )
@@ -40,7 +40,7 @@ fn linear_f64() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
 
 fn oscillator() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
     ODEProblem::new(
-        |_x: f64, y: &Array1<f64>| -> Array1<f64> { array![y[1], -y[0]] },
+        |_t: f64, u: &Array1<f64>| -> Array1<f64> { array![u[1], -u[0]] },
         array![0.0, 1.0],
         (0.0, 100.0),
     )
@@ -48,7 +48,7 @@ fn oscillator() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
 
 fn large_problem() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
     ODEProblem::new(
-        |x: f64, y: &Array1<f64>| -> Array1<f64> { array![(x + y[0]).sin() * y[0].cos()] },
+        |t: f64, u: &Array1<f64>| -> Array1<f64> { array![(t + u[0]).sin() * u[0].cos()] },
         array![0.5],
         (0.0, 100.0),
     )
