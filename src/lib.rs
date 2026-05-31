@@ -294,8 +294,8 @@ mod tests {
         let prob = ODEProblem::new(f, array![f64::NAN], (0.0, 1.0));
         let result = solve(&prob, &RUNGE_KUTTA_4, 0.1);
         assert!(
-            result.is_ok(),
-            "solve with NaN initial condition should not panic"
+            matches!(result, Err(SolverError::InvalidInitialCondition)),
+            "solve with NaN initial condition should return InvalidInitialCondition error"
         );
     }
 
@@ -305,8 +305,8 @@ mod tests {
         let prob = ODEProblem::new(f, array![f64::INFINITY], (0.0, 1.0));
         let result = solve(&prob, &RUNGE_KUTTA_4, 0.1);
         assert!(
-            result.is_ok(),
-            "solve with Inf initial condition should not panic"
+            matches!(result, Err(SolverError::InvalidInitialCondition)),
+            "solve with Inf initial condition should return InvalidInitialCondition error"
         );
     }
 
@@ -348,8 +348,8 @@ mod tests {
         let prob = ODEProblem::new(f, array![f64::NAN], (0.0, 0.0));
         let result = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6);
         assert!(
-            result.is_ok(),
-            "adaptive solve with NaN initial condition should not panic"
+            matches!(result, Err(SolverError::InvalidInitialCondition)),
+            "adaptive solve with NaN initial condition should return InvalidInitialCondition error"
         );
     }
 
@@ -359,8 +359,8 @@ mod tests {
         let prob = ODEProblem::new(f, array![f64::INFINITY], (0.0, 0.0));
         let result = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6);
         assert!(
-            result.is_ok(),
-            "adaptive solve with Inf initial condition should not panic"
+            matches!(result, Err(SolverError::InvalidInitialCondition)),
+            "adaptive solve with Inf initial condition should return InvalidInitialCondition error"
         );
     }
 
