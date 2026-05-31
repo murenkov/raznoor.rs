@@ -27,7 +27,7 @@ const RK1_A: &[&[f64]] = &[
 /// # Example
 ///
 /// ```
-/// use raznur::RUNGE_KUTTA_1;
+/// use raznoor::RUNGE_KUTTA_1;
 /// // First-order method: single stage, b coefficients sum to 1
 /// assert_eq!(RUNGE_KUTTA_1.b.len(), 1);
 /// assert!((RUNGE_KUTTA_1.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
@@ -52,7 +52,7 @@ const RK2_A: &[&[f64]] = &[
 /// # Example
 ///
 /// ```
-/// use raznur::RUNGE_KUTTA_2;
+/// use raznoor::RUNGE_KUTTA_2;
 /// // Second-order method: 2 stages, b coefficients sum to 1
 /// assert_eq!(RUNGE_KUTTA_2.b.len(), 2);
 /// assert!((RUNGE_KUTTA_2.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
@@ -77,7 +77,7 @@ const RK3_A: &[&[f64]] = &[
 /// # Example
 ///
 /// ```
-/// use raznur::RUNGE_KUTTA_3;
+/// use raznoor::RUNGE_KUTTA_3;
 /// // Third-order method: 3 stages, b coefficients sum to 1
 /// assert_eq!(RUNGE_KUTTA_3.b.len(), 3);
 /// assert!((RUNGE_KUTTA_3.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
@@ -103,7 +103,7 @@ const RK4_A: &[&[f64]] = &[
 /// # Example
 ///
 /// ```
-/// use raznur::RUNGE_KUTTA_4;
+/// use raznoor::RUNGE_KUTTA_4;
 /// // Fourth-order method: 4 stages, b coefficients sum to 1
 /// assert_eq!(RUNGE_KUTTA_4.b.len(), 4);
 /// assert!((RUNGE_KUTTA_4.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
@@ -131,7 +131,7 @@ const RK5_A: &[&[f64]] = &[
 /// # Example
 ///
 /// ```
-/// use raznur::RUNGE_KUTTA_5;
+/// use raznoor::RUNGE_KUTTA_5;
 /// // Fifth-order method: 6 stages, b coefficients sum to 1
 /// assert_eq!(RUNGE_KUTTA_5.b.len(), 6);
 /// assert!((RUNGE_KUTTA_5.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
@@ -182,7 +182,7 @@ const FEHLBERG45_A: &[&[f64]] = &[
 /// # Example
 ///
 /// ```
-/// use raznur::FEHLBERG45;
+/// use raznoor::FEHLBERG45;
 /// // Embedded 4(5) method: 6 stages, b coefficients sum to 1
 /// assert_eq!(FEHLBERG45.b.len(), 6);
 /// assert!((FEHLBERG45.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
@@ -226,7 +226,7 @@ const DORMAND_PRINCE45_A: &[&[f64]] = &[
 /// # Example
 ///
 /// ```
-/// use raznur::DORMAND_PRINCE45;
+/// use raznoor::DORMAND_PRINCE45;
 /// // Embedded 4(5) method: 7 stages, b coefficients sum to 1
 /// assert_eq!(DORMAND_PRINCE45.b.len(), 7);
 /// assert!((DORMAND_PRINCE45.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);

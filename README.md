@@ -1,4 +1,4 @@
-# raznur
+# raznoor
 
 A Rust library for solving ordinary differential equations (ODEs) using explicit Runge-Kutta methods.
 
@@ -12,18 +12,18 @@ A Rust library for solving ordinary differential equations (ODEs) using explicit
 
 ## Usage
 
-Add `raznur` to your `Cargo.toml`:
+Add `raznoor` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-raznur = "0.1.0"
+raznoor = "0.1.0"
 ```
 
 Example solving `y' = 2x + y` with `y(1) = 1` over `[1.0, 1.1]`:
 
 ```rust
 use ndarray::array;
-use raznur::{ODEProblem, solve, RUNGE_KUTTA_4};
+use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
 
 let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
 let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));

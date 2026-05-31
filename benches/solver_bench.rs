@@ -1,6 +1,6 @@
 use criterion::{Criterion, Throughput, black_box, criterion_group, criterion_main};
 use ndarray::{Array1, array};
-use raznur::{
+use raznoor::{
     DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, ODEProblem, RUNGE_KUTTA_1,
     RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5, solve, solve_adaptive,
 };

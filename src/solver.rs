@@ -196,7 +196,7 @@ fn validate_initial_condition<T: Float>(u0: &Array1<T>) -> Result<(), SolverErro
 ///
 /// ```
 /// use ndarray::array;
-/// use raznur::{ODEProblem, solve, RUNGE_KUTTA_4};
+/// use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
 ///
 /// let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
 /// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
@@ -343,7 +343,7 @@ where
 ///
 /// ```
 /// use ndarray::array;
-/// use raznur::{ODEProblem, solve_adaptive, DORMAND_PRINCE45};
+/// use raznoor::{ODEProblem, solve_adaptive, DORMAND_PRINCE45};
 ///
 /// let f = |x: f64, y: &ndarray::Array1<f64>| array![2.0 * x + y[0]];
 /// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
