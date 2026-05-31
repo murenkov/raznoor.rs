@@ -5,30 +5,30 @@ use num_traits::FromPrimitive;
 use crate::butcher::ExplicitRungeKuttaMethod;
 use crate::types::{Event, EventDirection, EventRecord, ODEProblem, ODESolution, SolverError};
 
-fn compute_stages<T, F>(
-    method: &ExplicitRungeKuttaMethod<f64>,
-    t: T,
-    h: T,
-    y: &Array1<T>,
-    arg: &mut Array1<T>,
-    ks: &mut [Array1<T>],
-    f: &F,
-) where
+struct StepperContext<'a, T, F> {
+    method: &'a ExplicitRungeKuttaMethod<f64>,
+    f: &'a F,
+    ks: &'a mut [Array1<T>],
+    arg: &'a mut Array1<T>,
+}
+
+fn compute_stages<T, F>(t: T, h: T, y: &Array1<T>, ctx: &mut StepperContext<T, F>)
+where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
     let cast = |x: &f64| T::from_f64(*x).unwrap();
-    for m in 0..method.c.len() {
-        arg.assign(y);
-        for (j, k) in ks.iter().enumerate() {
-            let coeff = cast(&method.a[m][j]);
+    for m in 0..ctx.method.c.len() {
+        ctx.arg.assign(y);
+        for (j, k) in ctx.ks.iter().enumerate() {
+            let coeff = cast(&ctx.method.a[m][j]);
             if coeff != T::zero() {
-                ndarray::Zip::from(&mut *arg)
+                ndarray::Zip::from(&mut *ctx.arg)
                     .and(k)
                     .for_each(|a, &kv| *a = *a + h * coeff * kv);
             }
         }
-        ks[m] = f(t + cast(&method.c[m]) * h, arg);
+        ctx.ks[m] = (ctx.f)(t + cast(&ctx.method.c[m]) * h, ctx.arg);
     }
 }
 
@@ -47,37 +47,25 @@ fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> 
     sum
 }
 
-fn advance<T, F>(
-    method: &ExplicitRungeKuttaMethod<f64>,
-    t: T,
-    h: T,
-    y: &Array1<T>,
-    f: &F,
-    ks: &mut [Array1<T>],
-    arg: &mut Array1<T>,
-) -> Array1<T>
+fn advance<T, F>(t: T, h: T, y: &Array1<T>, ctx: &mut StepperContext<T, F>) -> Array1<T>
 where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    compute_stages(method, t, h, y, arg, ks, f);
-    let update = weighted_sum(ks, method.b);
+    compute_stages(t, h, y, ctx);
+    let update = weighted_sum(ctx.ks, ctx.method.b);
     ndarray::Zip::from(y)
         .and(&update)
         .map_collect(|&yv, &up| yv + h * up)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn bisect_event<T, F>(
-    method: &ExplicitRungeKuttaMethod<f64>,
     t_left: T,
     t_right: T,
     y_left: &Array1<T>,
     g_left: T,
-    f: &F,
     g: &dyn Fn(T, &Array1<T>) -> T,
-    ks: &mut [Array1<T>],
-    arg: &mut Array1<T>,
+    ctx: &mut StepperContext<T, F>,
 ) -> (T, Array1<T>)
 where
     T: Float + FromPrimitive,
@@ -89,7 +77,7 @@ where
     let mut gl = g_left;
     for _ in 0..60 {
         let tm = (tl + tr) / T::from_f64(2.0).unwrap();
-        let ym = advance(method, tl, tm - tl, &yl, f, ks, arg);
+        let ym = advance(tl, tm - tl, &yl, ctx);
         let gm = g(tm, &ym);
         let gm_pos = gm > T::zero();
         if gm_pos == (gl > T::zero()) {
@@ -105,21 +93,17 @@ where
             break;
         }
     }
-    let y_event = advance(method, tl, tr - tl, &yl, f, ks, arg);
+    let y_event = advance(tl, tr - tl, &yl, ctx);
     (tr, y_event)
 }
 
-#[allow(clippy::too_many_arguments)]
 fn detect_events<T, F>(
-    method: &ExplicitRungeKuttaMethod<f64>,
     t_prev: T,
     t_curr: T,
     y_prev: &Array1<T>,
     y_curr: &Array1<T>,
     events: &[Event<T>],
-    f: &F,
-    ks: &mut [Array1<T>],
-    arg: &mut Array1<T>,
+    ctx: &mut StepperContext<T, F>,
 ) -> Result<Vec<EventRecord<T>>, SolverError>
 where
     T: Float + FromPrimitive,
@@ -146,9 +130,7 @@ where
     }
     let mut records: Vec<EventRecord<T>> = Vec::with_capacity(candidates.len());
     for (idx, event, g_prev) in candidates {
-        let (t_event, y_event) = bisect_event(
-            method, t_prev, t_curr, y_prev, g_prev, f, &*event.g, ks, arg,
-        );
+        let (t_event, y_event) = bisect_event(t_prev, t_curr, y_prev, g_prev, &*event.g, ctx);
         records.push(EventRecord {
             event_index: idx,
             t: t_event,
@@ -245,13 +227,19 @@ where
     let mut y = prob.u0.clone();
     let mut events: Vec<EventRecord<T>> = Vec::new();
     let mut final_step = n_steps;
+    let mut ctx = StepperContext {
+        method,
+        f: &prob.f,
+        ks: &mut ks,
+        arg: &mut arg,
+    };
 
     for i in 0..n_steps - 1 {
         let h = xs[i + 1] - xs[i];
         let t_prev = xs[i];
 
-        compute_stages(method, t_prev, h, &y, &mut arg, &mut ks, &prob.f);
-        let update = weighted_sum(&ks, method.b);
+        compute_stages(t_prev, h, &y, &mut ctx);
+        let update = weighted_sum(ctx.ks, ctx.method.b);
 
         if prob.events.is_empty() {
             let mut col = u.column_mut(i + 1);
@@ -267,17 +255,7 @@ where
                 .and(&update)
                 .map_collect(|&yv, &up| yv + h * up);
 
-            let detected = detect_events(
-                method,
-                t_prev,
-                xs[i + 1],
-                &y,
-                &y_curr,
-                &prob.events,
-                &prob.f,
-                &mut ks,
-                &mut arg,
-            )?;
+            let detected = detect_events(t_prev, xs[i + 1], &y, &y_curr, &prob.events, &mut ctx)?;
 
             if let Some(record) = detected.into_iter().next() {
                 let terminal = prob.events[record.event_index].terminal;
@@ -402,6 +380,12 @@ where
 
     let mut ks = vec![Array1::<T>::zeros(n); stages];
     let mut arg = Array1::<T>::zeros(n);
+    let mut ctx = StepperContext {
+        method,
+        f: &prob.f,
+        ks: &mut ks,
+        arg: &mut arg,
+    };
 
     for _step in 0..max_steps {
         if (t - tf).abs() <= T::epsilon() {
@@ -414,10 +398,10 @@ where
 
         let t_prev = t;
 
-        compute_stages(method, t_prev, h, &y, &mut arg, &mut ks, &prob.f);
+        compute_stages(t_prev, h, &y, &mut ctx);
 
-        let update = weighted_sum(&ks, method.b);
-        let err_diff = weighted_sum(&ks, &b_diff);
+        let update = weighted_sum(ctx.ks, ctx.method.b);
+        let err_diff = weighted_sum(ctx.ks, &b_diff);
 
         let y_new = ndarray::Zip::from(&y)
             .and(&update)
@@ -449,17 +433,7 @@ where
             let t_new = t_prev + h;
 
             if !prob.events.is_empty() {
-                let detected = detect_events(
-                    method,
-                    t_prev,
-                    t_new,
-                    &y,
-                    &y_new,
-                    &prob.events,
-                    &prob.f,
-                    &mut ks,
-                    &mut arg,
-                )?;
+                let detected = detect_events(t_prev, t_new, &y, &y_new, &prob.events, &mut ctx)?;
 
                 if let Some(record) = detected.into_iter().next() {
                     let terminal = prob.events[record.event_index].terminal;
