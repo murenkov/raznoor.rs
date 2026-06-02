@@ -5,6 +5,13 @@ description = "Explicit Runge-Kutta ODE solver for scalar and system initial val
 license = "MIT"
 edition = "2024"
 
+[lints.rust]
+missing_docs = "deny"
+
+[lints.clippy]
+all = "deny"
+pedantic = "deny"
+
 [dependencies]
 ndarray = "0.17.2"
 num-traits = "0.2.19"
