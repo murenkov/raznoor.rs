@@ -1,3 +1,5 @@
+#![allow(missing_docs, clippy::all, clippy::pedantic)]
+
 use criterion::{Criterion, Throughput, black_box, criterion_group, criterion_main};
 use ndarray::{Array1, array};
 use raznoor::{

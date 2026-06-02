@@ -1,7 +1,3 @@
-#![deny(missing_docs)]
-#![deny(clippy::all)]
-#![deny(clippy::pedantic)]
-
 //! Explicit Runge-Kutta ODE solver for scalar and system initial value problems.
 //!
 //! # Example
@@ -98,7 +94,7 @@ mod tests {
         let ys: Vec<T> = (0..11)
             .map(|i| {
                 T::from_f64(1.0).unwrap()
-                    + T::from_f64(i as f64).unwrap() * T::from_f64(0.01).unwrap()
+                    + T::from_f64(f64::from(i)).unwrap() * T::from_f64(0.01).unwrap()
             })
             .map(|x| {
                 T::from_f64(5.0).unwrap() * (x - T::from_f64(1.0).unwrap()).exp()
