@@ -12,7 +12,7 @@
 
 - [ ] Stiff solver support (implicit Runge-Kutta, BDF methods)
 - [ ] `no_std` support
-- [ ] Parallel/rayon-based batched solves
+- [x] Parallel/rayon-based batched solves
 - [ ] Interpolation routines (dense output)
 
 ## v0.4
