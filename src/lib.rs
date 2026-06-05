@@ -55,7 +55,7 @@ pub use butcher::{
     DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1, RUNGE_KUTTA_2,
     RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
 };
-pub use solver::{solve, solve_adaptive};
+pub use solver::{AdaptiveODESolver, FixedStepODESolver, ODESolver, solve, solve_adaptive};
 pub use types::{Event, EventDirection, EventRecord, ODEProblem, ODESolution, SolverError};
 
 #[cfg(test)]
