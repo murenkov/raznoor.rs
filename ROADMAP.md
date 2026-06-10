@@ -11,7 +11,7 @@
 ## v0.3
 
 - [ ] Stiff solver support (implicit Runge-Kutta, BDF methods)
-- [ ] `no_std` support
+- [ ] ~~`no_std` support (cancelled)~~
 - [x] Parallel/rayon-based batched solves
 - [ ] Interpolation routines (dense output)
 
