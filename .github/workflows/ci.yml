@@ -12,6 +12,9 @@ env:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features: ["", "--features parallel"]
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +29,7 @@ jobs:
       - name: Install pre-commit
         uses: pre-commit/action@v3.0.1
 
-      - name: Test with parallel feature
-        run: cargo test --features parallel
+      - name: Test
+        run: cargo test ${{ matrix.features }}
 
 
