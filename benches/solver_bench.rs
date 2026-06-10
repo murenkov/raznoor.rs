@@ -30,6 +30,7 @@ fn linear_f32() -> ODEProblem<f32, impl Fn(f32, &Array1<f32>) -> Array1<f32>> {
         array![1.0],
         (1.0, 10.0),
     )
+    .expect("failed to create problem")
 }
 
 fn linear_f64() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
@@ -38,6 +39,7 @@ fn linear_f64() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
         array![1.0],
         (1.0, 10.0),
     )
+    .expect("failed to create problem")
 }
 
 fn oscillator() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
@@ -46,6 +48,7 @@ fn oscillator() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
         array![0.0, 1.0],
         (0.0, 100.0),
     )
+    .expect("failed to create problem")
 }
 
 fn large_problem() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>> {
@@ -54,6 +57,7 @@ fn large_problem() -> ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>>
         array![0.5],
         (0.0, 100.0),
     )
+    .expect("failed to create problem")
 }
 
 // --- Benchmark groups ---

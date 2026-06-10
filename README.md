@@ -26,7 +26,7 @@ use ndarray::array;
 use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
 
 let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
-let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
+let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
 
 let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
 for (t, u) in sol.t.iter().zip(sol.u.row(0).iter()) {

@@ -1,4 +1,5 @@
 use ndarray::{Array1, Array2};
+use num_traits::Float;
 
 /// Type alias for event function `g(t, u)`.
 type EventFn<T> = Box<dyn Fn(T, &Array1<T>) -> T>;
@@ -115,7 +116,7 @@ impl<T> ODESolution<T> {
 /// use raznoor::{ODEProblem, solve_adaptive, RUNGE_KUTTA_1, SolverError};
 ///
 /// let f = |t: f64, u: &ndarray::Array1<f64>| array![0.0];
-/// let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0));
+/// let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0)).unwrap();
 /// let result = solve_adaptive(&prob, &RUNGE_KUTTA_1, 0.01, 1e-4, 1e-4);
 /// assert!(matches!(result, Err(SolverError::AdaptiveNotSupported)));
 /// ```
@@ -153,6 +154,15 @@ impl std::fmt::Display for SolverError {
 
 impl std::error::Error for SolverError {}
 
+fn validate_initial_condition<T: Float>(u0: &Array1<T>) -> Result<(), SolverError> {
+    for &val in u0 {
+        if val.is_nan() || val.is_infinite() {
+            return Err(SolverError::InvalidInitialCondition);
+        }
+    }
+    Ok(())
+}
+
 /// An initial value problem for a system of ordinary differential equations.
 ///
 /// This struct is `#[non_exhaustive]`; new fields may be added in future releases.
@@ -176,13 +186,22 @@ pub struct ODEProblem<T, F> {
 impl<T, F> ODEProblem<T, F> {
     /// Create a new ODE problem from a right-hand side function, initial condition,
     /// and time span.
-    pub fn new(f: F, u0: Array1<T>, tspan: (T, T)) -> Self {
-        Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SolverError::InvalidInitialCondition`] if `u0` contains NaN or
+    /// infinite values.
+    pub fn new(f: F, u0: Array1<T>, tspan: (T, T)) -> Result<Self, SolverError>
+    where
+        T: Float,
+    {
+        validate_initial_condition(&u0)?;
+        Ok(Self {
             f,
             u0,
             tspan,
             events: Vec::new(),
-        }
+        })
     }
 
     /// Set the events to detect during integration.
