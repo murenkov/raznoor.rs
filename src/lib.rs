@@ -50,7 +50,7 @@ pub mod types;
 pub mod butcher;
 
 /// Fixed-step and adaptive ODE solvers.
-pub mod solver;
+mod solver;
 
 /// Parallel batched ODE solves using rayon.
 #[cfg(feature = "parallel")]
