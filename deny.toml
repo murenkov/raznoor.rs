@@ -1,0 +1,14 @@
+[advisories]
+vulnerability = "deny"
+unmaintained = "warn"
+yanked = "warn"
+
+[licenses]
+allow = ["MIT"]
+confidence = 0.8
+
+[bans]
+multiple-versions = "deny"
+
+[sources]
+allow-git = []
