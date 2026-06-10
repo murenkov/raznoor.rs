@@ -176,7 +176,7 @@ where
 /// Fixed-step solver configuration.
 ///
 /// Wraps a Runge-Kutta method and a constant step size. Use this with
-/// [`ODESolver::solve`] or call the convenience function [`solve`].
+/// [`ODESolver::solve`] directly.
 ///
 /// # Example
 ///
@@ -231,7 +231,7 @@ impl<T: Float> FixedStepODESolver<T> {
 ///
 /// Wraps an embedded Runge-Kutta pair (e.g. Fehlberg45 or Dormand–Prince),
 /// an initial step size, and error tolerances. Use this with
-/// [`ODESolver::solve`] or the convenience function [`solve_adaptive`].
+/// [`ODESolver::solve`] directly.
 ///
 /// # Example
 ///
@@ -553,101 +553,4 @@ where
             events,
         })
     }
-}
-
-/// Solve an ODE problem using a fixed-step Runge-Kutta method.
-///
-/// This is a convenience wrapper around [`FixedStepODESolver`] and [`ODESolver::solve`].
-/// See [`FixedStepODESolver`] for details.
-///
-/// # Parameters
-/// * `prob` — The ODE problem definition.
-/// * `method` — The Runge-Kutta method to use (e.g. [`crate::RUNGE_KUTTA_4`]).
-/// * `dt` — The absolute step size. Must be positive.
-///
-/// # Returns
-/// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
-///
-/// # Errors
-/// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero or negative, or
-/// `Err(SolverError::EventError)` if an event function returns an invalid value.
-///
-/// # Example
-///
-/// ```
-/// use ndarray::array;
-/// use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
-///
-/// let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
-/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
-///
-/// let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
-/// let u_last = sol.u[[0, sol.t.len() - 1]];
-/// let u_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
-/// assert!((u_last - u_exact).abs() < 1e-4);
-/// ```
-pub fn solve<T, F>(
-    prob: &ODEProblem<T, F>,
-    method: &ExplicitRungeKuttaMethod<f64>,
-    dt: T,
-) -> Result<ODESolution<T>, SolverError>
-where
-    T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
-{
-    FixedStepODESolver::new(*method, dt)?.solve(prob)
-}
-
-/// Solve an ODE problem using variable step-size (adaptive) integration.
-///
-/// This is a convenience wrapper around [`AdaptiveODESolver`] and [`ODESolver::solve`].
-/// See [`AdaptiveODESolver`] for details.
-///
-/// Uses an embedded Runge-Kutta pair (e.g. Fehlberg45 or Dormand–Prince) to estimate the
-/// local truncation error and adjust the step size accordingly with an I-controller.
-///
-/// If `prob.events` is non-empty, event detection runs after each accepted step.
-/// A terminal event stops integration early.
-///
-/// # Parameters
-/// * `prob` — The ODE problem definition.
-/// * `method` — An embedded Runge–Kutta pair (e.g. [`crate::FEHLBERG45`], [`crate::DORMAND_PRINCE45`]).
-/// * `dt` — Initial step size guess. Must not be zero.
-/// * `atol` — Absolute tolerance for the error per step.
-/// * `rtol` — Relative tolerance for the error per step.
-///
-/// # Returns
-/// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
-///
-/// # Errors
-/// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero,
-/// `Err(SolverError::AdaptiveNotSupported)` if the method does not provide distinct
-/// embedded coefficients, or `Err(SolverError::EventError)` if an event function returns
-/// an invalid value.
-///
-/// # Example
-///
-/// ```
-/// use ndarray::array;
-/// use raznoor::{ODEProblem, solve_adaptive, DORMAND_PRINCE45};
-///
-/// let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
-/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
-/// let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
-/// let u_last = sol.u[[0, sol.t.len() - 1]];
-/// let u_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
-/// assert!((u_last - u_exact).abs() < 1e-4);
-/// ```
-pub fn solve_adaptive<T, F>(
-    prob: &ODEProblem<T, F>,
-    method: &ExplicitRungeKuttaMethod<f64>,
-    dt: T,
-    atol: T,
-    rtol: T,
-) -> Result<ODESolution<T>, SolverError>
-where
-    T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
-{
-    AdaptiveODESolver::new(*method, dt, atol, rtol)?.solve(prob)
 }

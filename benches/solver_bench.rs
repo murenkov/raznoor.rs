@@ -3,8 +3,9 @@
 use criterion::{Criterion, Throughput, black_box, criterion_group, criterion_main};
 use ndarray::{Array1, array};
 use raznoor::{
-    DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, ODEProblem, RUNGE_KUTTA_1,
-    RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5, solve, solve_adaptive,
+    AdaptiveODESolver, DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, FixedStepODESolver,
+    ODEProblem, ODESolver, RUNGE_KUTTA_1, RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4,
+    RUNGE_KUTTA_5,
 };
 
 type ERKMethod = ExplicitRungeKuttaMethod<f64>;
@@ -76,14 +77,24 @@ fn bench_fixed_step(c: &mut Criterion) {
                 (std::mem::size_of::<f32>() * (n_times * 2)) as u64,
             ));
             group.bench_function(format!("{name}_f32_{label}"), |b| {
-                b.iter(|| solve(black_box(&p32), method, black_box(dt as f32)))
+                b.iter(|| {
+                    FixedStepODESolver::new(**method, black_box(dt as f32))
+                        .unwrap()
+                        .solve(black_box(&p32))
+                        .unwrap()
+                })
             });
 
             group.throughput(Throughput::Bytes(
                 (std::mem::size_of::<f64>() * (n_times * 2)) as u64,
             ));
             group.bench_function(format!("{name}_f64_{label}"), |b| {
-                b.iter(|| solve(black_box(&p64), method, black_box(dt)))
+                b.iter(|| {
+                    FixedStepODESolver::new(**method, black_box(dt))
+                        .unwrap()
+                        .solve(black_box(&p64))
+                        .unwrap()
+                })
             });
         }
     }
@@ -98,24 +109,28 @@ fn bench_adaptive(c: &mut Criterion) {
     for (name, method) in ADAPTIVE_METHODS {
         group.bench_function(format!("{name}_f32"), |b| {
             b.iter(|| {
-                solve_adaptive(
-                    black_box(&p32),
-                    method,
+                AdaptiveODESolver::new(
+                    **method,
                     black_box(0.1f32),
                     black_box(1e-4f32),
                     black_box(1e-4f32),
                 )
+                .unwrap()
+                .solve(black_box(&p32))
+                .unwrap()
             })
         });
         group.bench_function(format!("{name}_f64"), |b| {
             b.iter(|| {
-                solve_adaptive(
-                    black_box(&p64),
-                    method,
+                AdaptiveODESolver::new(
+                    **method,
                     black_box(0.1f64),
                     black_box(1e-8f64),
                     black_box(1e-8f64),
                 )
+                .unwrap()
+                .solve(black_box(&p64))
+                .unwrap()
             })
         });
     }
@@ -131,20 +146,22 @@ fn bench_system(c: &mut Criterion) {
             (std::mem::size_of::<f64>() * 3 * 10_001usize) as u64,
         ));
         group.bench_function(format!("{name}_fixed"), |b| {
-            b.iter(|| solve(black_box(&prob), method, black_box(0.01)))
+            b.iter(|| {
+                FixedStepODESolver::new(**method, black_box(0.01))
+                    .unwrap()
+                    .solve(black_box(&prob))
+                    .unwrap()
+            })
         });
     }
 
     for (name, method) in ADAPTIVE_METHODS {
         group.bench_function(format!("{name}_adaptive"), |b| {
             b.iter(|| {
-                solve_adaptive(
-                    black_box(&prob),
-                    method,
-                    black_box(0.01),
-                    black_box(1e-6),
-                    black_box(1e-6),
-                )
+                AdaptiveODESolver::new(**method, black_box(0.01), black_box(1e-6), black_box(1e-6))
+                    .unwrap()
+                    .solve(black_box(&prob))
+                    .unwrap()
             })
         });
     }
@@ -161,7 +178,12 @@ fn bench_large(c: &mut Criterion) {
             (std::mem::size_of::<f64>() * 2 * n_times) as u64,
         ));
         group.bench_function(format!("{name}_100k"), |b| {
-            b.iter(|| solve(black_box(&prob), method, black_box(0.001)))
+            b.iter(|| {
+                FixedStepODESolver::new(**method, black_box(0.001))
+                    .unwrap()
+                    .solve(black_box(&prob))
+                    .unwrap()
+            })
         });
     }
     group.finish();
@@ -173,10 +195,20 @@ fn bench_precision(c: &mut Criterion) {
     let p64 = linear_f64();
 
     group.bench_function("RK4_f32", |b| {
-        b.iter(|| solve(black_box(&p32), &RUNGE_KUTTA_4, black_box(0.01)))
+        b.iter(|| {
+            FixedStepODESolver::new(RUNGE_KUTTA_4, black_box(0.01))
+                .unwrap()
+                .solve(black_box(&p32))
+                .unwrap()
+        })
     });
     group.bench_function("RK4_f64", |b| {
-        b.iter(|| solve(black_box(&p64), &RUNGE_KUTTA_4, black_box(0.01)))
+        b.iter(|| {
+            FixedStepODESolver::new(RUNGE_KUTTA_4, black_box(0.01))
+                .unwrap()
+                .solve(black_box(&p64))
+                .unwrap()
+        })
     });
     group.finish();
 }

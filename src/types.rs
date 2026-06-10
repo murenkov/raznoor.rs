@@ -113,11 +113,11 @@ impl<T> ODESolution<T> {
 ///
 /// ```
 /// use ndarray::array;
-/// use raznoor::{ODEProblem, solve_adaptive, RUNGE_KUTTA_1, SolverError};
+/// use raznoor::{AdaptiveODESolver, ODEProblem, ODESolver, RUNGE_KUTTA_1, SolverError};
 ///
 /// let f = |t: f64, u: &ndarray::Array1<f64>| array![0.0];
 /// let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0)).unwrap();
-/// let result = solve_adaptive(&prob, &RUNGE_KUTTA_1, 0.01, 1e-4, 1e-4);
+/// let result = AdaptiveODESolver::new(RUNGE_KUTTA_1, 0.01, 1e-4, 1e-4).and_then(|s| s.solve(&prob));
 /// assert!(matches!(result, Err(SolverError::AdaptiveNotSupported)));
 /// ```
 #[derive(Debug, PartialEq)]

@@ -4,12 +4,12 @@
 //!
 //! ```
 //! use ndarray::array;
-//! use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
+//! use raznoor::{FixedStepODESolver, ODEProblem, ODESolver, RUNGE_KUTTA_4};
 //!
 //! let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
 //! let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
 //!
-//! let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+//! let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap().solve(&prob).unwrap();
 //! let u_last = sol.u[[0, sol.t.len() - 1]];
 //! let u_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
 //! assert!((u_last - u_exact).abs() < 1e-4);
@@ -23,7 +23,7 @@
 //! ```
 //! use ndarray::array;
 //! use ndarray::Array1;
-//! use raznoor::{Event, EventDirection, ODEProblem, solve, RUNGE_KUTTA_4};
+//! use raznoor::{Event, EventDirection, FixedStepODESolver, ODEProblem, ODESolver, RUNGE_KUTTA_4};
 //!
 //! let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
 //!
@@ -36,7 +36,7 @@
 //! let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).unwrap()
 //!     .with_events(vec![event]);
 //!
-//! let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+//! let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap().solve(&prob).unwrap();
 //! // Integration stops at t ≈ ln(2) where y(t) = 0.5
 //! assert!((sol.t[sol.t.len() - 1] - (2.0_f64).ln()).abs() < 0.01);
 //! assert_eq!(sol.events.len(), 1);
@@ -55,7 +55,7 @@ pub use butcher::{
     DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1, RUNGE_KUTTA_2,
     RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
 };
-pub use solver::{AdaptiveODESolver, FixedStepODESolver, ODESolver, solve, solve_adaptive};
+pub use solver::{AdaptiveODESolver, FixedStepODESolver, ODESolver};
 pub use types::{Event, EventDirection, EventRecord, ODEProblem, ODESolution, SolverError};
 
 #[cfg(test)]
@@ -132,7 +132,10 @@ mod tests {
             #[test]
             fn $name() {
                 let (prob, reference) = $setup;
-                let sol = solve(&prob, &$tableau, 0.01).unwrap();
+                let sol = FixedStepODESolver::new($tableau, 0.01)
+                    .unwrap()
+                    .solve(&prob)
+                    .unwrap();
                 for (i, ref_traj) in reference.iter().enumerate() {
                     let computed = sol.u.row(i);
                     let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
@@ -198,7 +201,7 @@ mod tests {
             #[test]
             fn $name() {
                 let (prob, reference) = $setup;
-                let sol = solve_adaptive(&prob, &$tableau, 0.01, $atol, $rtol).unwrap();
+                let sol = AdaptiveODESolver::new($tableau, 0.01, $atol, $rtol).unwrap().solve(&prob).unwrap();
                 let n_t = sol.t.len();
                 for (i, ref_traj) in reference.iter().enumerate() {
                     let computed_last = sol.u.row(i)[n_t - 1];
@@ -260,7 +263,8 @@ mod tests {
             #[test]
             fn $name() {
                 let (prob, _reference) = linear_problem::<f64>();
-                let result = solve_adaptive(&prob, &$tableau, 0.01, 1e-4, 1e-4);
+                let result =
+                    AdaptiveODESolver::new($tableau, 0.01, 1e-4, 1e-4).and_then(|s| s.solve(&prob));
                 assert!(result.is_err());
                 assert_eq!(result.unwrap_err(), SolverError::AdaptiveNotSupported);
             }
@@ -279,7 +283,7 @@ mod tests {
     fn solve_zero_dt() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
         let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
-        let result = solve(&prob, &RUNGE_KUTTA_4, 0.0);
+        let result = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.0).and_then(|s| s.solve(&prob));
         assert!(
             matches!(result, Err(SolverError::InvalidStepSize)),
             "solve with dt=0 should return InvalidStepSize error"
@@ -290,7 +294,7 @@ mod tests {
     fn solve_negative_dt() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
         let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
-        let result = solve(&prob, &RUNGE_KUTTA_4, -0.01);
+        let result = FixedStepODESolver::new(RUNGE_KUTTA_4, -0.01).and_then(|s| s.solve(&prob));
         assert!(
             matches!(result, Err(SolverError::InvalidStepSize)),
             "solve with negative dt should return InvalidStepSize error"
@@ -301,7 +305,10 @@ mod tests {
     fn solve_dt_larger_than_tspan() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
         let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 2.0).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 2.0)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert_eq!(
             sol.t.len(),
             2,
@@ -339,7 +346,10 @@ mod tests {
     fn solve_empty_system() {
         let f = |_t: f64, _u: &Array1<f64>| Array1::<f64>::zeros(0);
         let prob = ODEProblem::new(f, Array1::<f64>::zeros(0), (0.0, 1.0)).unwrap();
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.1).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert_eq!(sol.u.nrows(), 0, "empty system should have 0 variables");
         assert!(sol.t.len() >= 2, "should have at least 2 time points");
     }
@@ -348,7 +358,10 @@ mod tests {
     fn solve_negative_direction() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
         let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.1).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert!(
             (sol.t[0] - 1.0).abs() < f64::EPSILON,
             "first time point should be t0"
@@ -391,7 +404,10 @@ mod tests {
     fn solve_adaptive_negative_direction() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
         let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
-        let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
+        let sol = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert_eq!(sol.u.nrows(), 1);
         assert!(
             (sol.t[0] - 1.0).abs() < f64::EPSILON,
@@ -407,7 +423,8 @@ mod tests {
     fn solve_adaptive_tight_tolerances() {
         let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
         let prob = ODEProblem::new(f, array![1.0], (0.0, 1000.0)).unwrap();
-        let result = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-14, 1e-14);
+        let result = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-14, 1e-14)
+            .and_then(|s| s.solve(&prob));
         assert!(
             result.is_ok(),
             "adaptive solve with tight tolerances should not panic"
@@ -430,7 +447,7 @@ mod tests {
             let u0 = Array1::<f64>::ones(n_vars);
             let f = |_t: f64, u: &Array1<f64>| -u.clone();
             let prob = ODEProblem::new(f, u0, (0.0, 1.0)).unwrap();
-            let sol = solve(&prob, &RUNGE_KUTTA_4, dt).unwrap();
+            let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, dt).unwrap().solve(&prob).unwrap();
             prop_assert_eq!(sol.u.nrows(), n_vars, "number of solution variables should match");
             prop_assert!((sol.t[0] - prob.tspan.0).abs() < f64::EPSILON, "first time point should be t0");
             prop_assert!((sol.t[sol.t.len() - 1] - prob.tspan.1).abs() < f64::EPSILON, "last time point should be tf");
@@ -442,7 +459,7 @@ mod tests {
         ) {
             let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
             let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
-            let sol = solve(&prob, &RUNGE_KUTTA_4, dt).unwrap();
+            let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, dt).unwrap().solve(&prob).unwrap();
             let n = sol.t.len();
             prop_assert!((sol.t[0] - prob.tspan.0).abs() < f64::EPSILON, "first time point should be t0");
             prop_assert!((sol.t[n - 1] - prob.tspan.1).abs() < f64::EPSILON, "last time point should be tf");
@@ -458,7 +475,7 @@ mod tests {
         ) {
             let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
             let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
-            let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, atol, rtol).unwrap();
+            let sol = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, atol, rtol).unwrap().solve(&prob).unwrap();
             prop_assert_eq!(sol.u.nrows(), 1, "should have 1 variable");
             prop_assert!(sol.t.len() > 1, "should produce at least 2 time points");
             prop_assert!((sol.t[0] - prob.tspan.0).abs() < f64::EPSILON, "first time point should be t0");
@@ -479,7 +496,10 @@ mod tests {
         let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
             .unwrap()
             .with_events(vec![event]);
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         let expected = (2.0_f64).ln();
         assert!(
             (sol.t[sol.t.len() - 1] - expected).abs() < 0.01,
@@ -505,7 +525,10 @@ mod tests {
         let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
             .unwrap()
             .with_events(vec![event]);
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert!(
             (sol.t[sol.t.len() - 1] - 5.0).abs() < f64::EPSILON,
             "non-terminal event should integrate to end of tspan"
@@ -524,7 +547,10 @@ mod tests {
         let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
             .unwrap()
             .with_events(vec![event]);
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert!(
             (sol.t[sol.t.len() - 1] - (2.0_f64).ln()).abs() < 0.01,
             "decreasing event should trigger at ln(2)"
@@ -542,7 +568,10 @@ mod tests {
         let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
             .unwrap()
             .with_events(vec![event]);
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert!(
             (sol.t[sol.t.len() - 1] - 5.0).abs() < f64::EPSILON,
             "increasing event should not trigger on decreasing function"
@@ -561,7 +590,10 @@ mod tests {
         let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0))
             .unwrap()
             .with_events(vec![event]);
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert!(
             (sol.t[sol.t.len() - 1] - 1.0).abs() < f64::EPSILON,
             "no event should fire"
@@ -580,7 +612,10 @@ mod tests {
         let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
             .unwrap()
             .with_events(vec![event]);
-        let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
+        let sol = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         let expected = (2.0_f64).ln();
         assert!(
             (sol.t[sol.t.len() - 1] - expected).abs() < 0.01,
@@ -607,7 +642,10 @@ mod tests {
         let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
             .unwrap()
             .with_events(vec![event_late, event_early]);
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         let expected = (2.0_f64).ln();
         assert!(
             (sol.t[sol.t.len() - 1] - expected).abs() < 0.01,
@@ -626,7 +664,10 @@ mod tests {
         let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
             .unwrap()
             .with_events(vec![event]);
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert_eq!(sol.events.len(), 1, "one event should be recorded");
         assert_eq!(sol.events[0].event_index, 0);
         assert!(
@@ -639,7 +680,10 @@ mod tests {
     fn event_no_events_no_overhead() {
         let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
         let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
-        let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
+        let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
         assert!(sol.events.is_empty(), "no events should be recorded");
     }
 }
