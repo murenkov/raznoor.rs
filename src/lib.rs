@@ -7,7 +7,7 @@
 //! use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
 //!
 //! let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
-//! let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
+//! let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
 //!
 //! let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
 //! let u_last = sol.u[[0, sol.t.len() - 1]];
@@ -33,7 +33,7 @@
 //!     EventDirection::Any,
 //! );
 //!
-//! let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+//! let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).unwrap()
 //!     .with_events(vec![event]);
 //!
 //! let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
@@ -278,7 +278,7 @@ mod tests {
     #[test]
     fn solve_zero_dt() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
         let result = solve(&prob, &RUNGE_KUTTA_4, 0.0);
         assert!(
             matches!(result, Err(SolverError::InvalidStepSize)),
@@ -289,7 +289,7 @@ mod tests {
     #[test]
     fn solve_negative_dt() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
         let result = solve(&prob, &RUNGE_KUTTA_4, -0.01);
         assert!(
             matches!(result, Err(SolverError::InvalidStepSize)),
@@ -300,7 +300,7 @@ mod tests {
     #[test]
     fn solve_dt_larger_than_tspan() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
         let sol = solve(&prob, &RUNGE_KUTTA_4, 2.0).unwrap();
         assert_eq!(
             sol.t.len(),
@@ -318,29 +318,27 @@ mod tests {
     #[test]
     fn solve_nan_initial_condition() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-        let prob = ODEProblem::new(f, array![f64::NAN], (0.0, 1.0));
-        let result = solve(&prob, &RUNGE_KUTTA_4, 0.1);
+        let result = ODEProblem::new(f, array![f64::NAN], (0.0, 1.0));
         assert!(
             matches!(result, Err(SolverError::InvalidInitialCondition)),
-            "solve with NaN initial condition should return InvalidInitialCondition error"
+            "ODEProblem::new with NaN initial condition should return InvalidInitialCondition error"
         );
     }
 
     #[test]
     fn solve_inf_initial_condition() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-        let prob = ODEProblem::new(f, array![f64::INFINITY], (0.0, 1.0));
-        let result = solve(&prob, &RUNGE_KUTTA_4, 0.1);
+        let result = ODEProblem::new(f, array![f64::INFINITY], (0.0, 1.0));
         assert!(
             matches!(result, Err(SolverError::InvalidInitialCondition)),
-            "solve with Inf initial condition should return InvalidInitialCondition error"
+            "ODEProblem::new with Inf initial condition should return InvalidInitialCondition error"
         );
     }
 
     #[test]
     fn solve_empty_system() {
         let f = |_t: f64, _u: &Array1<f64>| Array1::<f64>::zeros(0);
-        let prob = ODEProblem::new(f, Array1::<f64>::zeros(0), (0.0, 1.0));
+        let prob = ODEProblem::new(f, Array1::<f64>::zeros(0), (0.0, 1.0)).unwrap();
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.1).unwrap();
         assert_eq!(sol.u.nrows(), 0, "empty system should have 0 variables");
         assert!(sol.t.len() >= 2, "should have at least 2 time points");
@@ -349,7 +347,7 @@ mod tests {
     #[test]
     fn solve_negative_direction() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-        let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0));
+        let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.1).unwrap();
         assert!(
             (sol.t[0] - 1.0).abs() < f64::EPSILON,
@@ -372,29 +370,27 @@ mod tests {
     #[test]
     fn solve_adaptive_nan_initial_condition() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-        let prob = ODEProblem::new(f, array![f64::NAN], (0.0, 0.0));
-        let result = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6);
+        let result = ODEProblem::new(f, array![f64::NAN], (0.0, 0.0));
         assert!(
             matches!(result, Err(SolverError::InvalidInitialCondition)),
-            "adaptive solve with NaN initial condition should return InvalidInitialCondition error"
+            "ODEProblem::new with NaN initial condition should return InvalidInitialCondition error"
         );
     }
 
     #[test]
     fn solve_adaptive_inf_initial_condition() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-        let prob = ODEProblem::new(f, array![f64::INFINITY], (0.0, 0.0));
-        let result = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6);
+        let result = ODEProblem::new(f, array![f64::INFINITY], (0.0, 0.0));
         assert!(
             matches!(result, Err(SolverError::InvalidInitialCondition)),
-            "adaptive solve with Inf initial condition should return InvalidInitialCondition error"
+            "ODEProblem::new with Inf initial condition should return InvalidInitialCondition error"
         );
     }
 
     #[test]
     fn solve_adaptive_negative_direction() {
         let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-        let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0));
+        let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
         let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
         assert_eq!(sol.u.nrows(), 1);
         assert!(
@@ -410,7 +406,7 @@ mod tests {
     #[test]
     fn solve_adaptive_tight_tolerances() {
         let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 1000.0));
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1000.0)).unwrap();
         let result = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-14, 1e-14);
         assert!(
             result.is_ok(),
@@ -433,7 +429,7 @@ mod tests {
         ) {
             let u0 = Array1::<f64>::ones(n_vars);
             let f = |_t: f64, u: &Array1<f64>| -u.clone();
-            let prob = ODEProblem::new(f, u0, (0.0, 1.0));
+            let prob = ODEProblem::new(f, u0, (0.0, 1.0)).unwrap();
             let sol = solve(&prob, &RUNGE_KUTTA_4, dt).unwrap();
             prop_assert_eq!(sol.u.nrows(), n_vars, "number of solution variables should match");
             prop_assert!((sol.t[0] - prob.tspan.0).abs() < f64::EPSILON, "first time point should be t0");
@@ -445,7 +441,7 @@ mod tests {
             dt in 1e-4f64..0.1f64,
         ) {
             let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-            let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+            let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
             let sol = solve(&prob, &RUNGE_KUTTA_4, dt).unwrap();
             let n = sol.t.len();
             prop_assert!((sol.t[0] - prob.tspan.0).abs() < f64::EPSILON, "first time point should be t0");
@@ -461,7 +457,7 @@ mod tests {
             rtol in 1e-12f64..1e-6f64,
         ) {
             let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-            let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+            let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
             let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, atol, rtol).unwrap();
             prop_assert_eq!(sol.u.nrows(), 1, "should have 1 variable");
             prop_assert!(sol.t.len() > 1, "should produce at least 2 time points");
@@ -480,7 +476,9 @@ mod tests {
             true,
             EventDirection::Any,
         );
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+            .unwrap()
+            .with_events(vec![event]);
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
         let expected = (2.0_f64).ln();
         assert!(
@@ -504,7 +502,9 @@ mod tests {
             false,
             EventDirection::Any,
         );
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+            .unwrap()
+            .with_events(vec![event]);
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
         assert!(
             (sol.t[sol.t.len() - 1] - 5.0).abs() < f64::EPSILON,
@@ -521,7 +521,9 @@ mod tests {
             true,
             EventDirection::Decreasing,
         );
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+            .unwrap()
+            .with_events(vec![event]);
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
         assert!(
             (sol.t[sol.t.len() - 1] - (2.0_f64).ln()).abs() < 0.01,
@@ -537,7 +539,9 @@ mod tests {
             true,
             EventDirection::Increasing,
         );
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+            .unwrap()
+            .with_events(vec![event]);
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
         assert!(
             (sol.t[sol.t.len() - 1] - 5.0).abs() < f64::EPSILON,
@@ -554,7 +558,9 @@ mod tests {
             true,
             EventDirection::Any,
         );
-        let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0)).with_events(vec![event]);
+        let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0))
+            .unwrap()
+            .with_events(vec![event]);
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
         assert!(
             (sol.t[sol.t.len() - 1] - 1.0).abs() < f64::EPSILON,
@@ -571,7 +577,9 @@ mod tests {
             true,
             EventDirection::Any,
         );
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+            .unwrap()
+            .with_events(vec![event]);
         let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
         let expected = (2.0_f64).ln();
         assert!(
@@ -596,8 +604,9 @@ mod tests {
             true,
             EventDirection::Any,
         );
-        let prob =
-            ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event_late, event_early]);
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+            .unwrap()
+            .with_events(vec![event_late, event_early]);
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
         let expected = (2.0_f64).ln();
         assert!(
@@ -614,7 +623,9 @@ mod tests {
             true,
             EventDirection::Any,
         );
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0)).with_events(vec![event]);
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+            .unwrap()
+            .with_events(vec![event]);
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
         assert_eq!(sol.events.len(), 1, "one event should be recorded");
         assert_eq!(sol.events[0].event_index, 0);
@@ -627,7 +638,7 @@ mod tests {
     #[test]
     fn event_no_events_no_overhead() {
         let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0));
+        let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
         let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
         assert!(sol.events.is_empty(), "no events should be recorded");
     }

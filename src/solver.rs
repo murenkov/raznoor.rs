@@ -144,15 +144,6 @@ where
     Ok(records)
 }
 
-fn validate_initial_condition<T: Float>(u0: &Array1<T>) -> Result<(), SolverError> {
-    for &val in u0 {
-        if val.is_nan() || val.is_infinite() {
-            return Err(SolverError::InvalidInitialCondition);
-        }
-    }
-    Ok(())
-}
-
 /// A solver that can integrate an [`ODEProblem`].
 ///
 /// # Example
@@ -162,7 +153,7 @@ fn validate_initial_condition<T: Float>(u0: &Array1<T>) -> Result<(), SolverErro
 /// use raznoor::{ODEProblem, ODESolver, FixedStepODESolver, RUNGE_KUTTA_4};
 ///
 /// let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
-/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
+/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
 ///
 /// let config = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap();
 /// let sol = config.solve(&prob).unwrap();
@@ -176,8 +167,7 @@ where
     ///
     /// # Errors
     ///
-    /// Returns [`SolverError::InvalidInitialCondition`] if `prob.u0` contains NaN or
-    /// infinite values, or [`SolverError::EventError`] if an event function returns
+    /// Returns [`SolverError::EventError`] if an event function returns
     /// an invalid value. Implementations may return other variants (e.g.
     /// [`SolverError::InvalidStepSize`], [`SolverError::AdaptiveNotSupported`]).
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError>;
@@ -198,7 +188,7 @@ where
 ///     |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]],
 ///     array![1.0],
 ///     (1.0, 1.1),
-/// );
+/// ).unwrap();
 ///
 /// let config = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap();
 /// let sol = config.solve(&prob).unwrap();
@@ -253,7 +243,7 @@ impl<T: Float> FixedStepODESolver<T> {
 ///     |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]],
 ///     array![1.0],
 ///     (1.0, 1.1),
-/// );
+/// ).unwrap();
 ///
 /// let config = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
 /// let sol = config.solve(&prob).unwrap();
@@ -324,7 +314,6 @@ where
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError> {
-        validate_initial_condition(&prob.u0)?;
         let dt = if prob.tspan.1 >= prob.tspan.0 {
             self.dt
         } else {
@@ -431,7 +420,6 @@ where
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError> {
-        validate_initial_condition(&prob.u0)?;
         if self.method.b == self.method.b_hat {
             return Err(SolverError::AdaptiveNotSupported);
         }
@@ -581,10 +569,8 @@ where
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
 ///
 /// # Errors
-/// Returns `Err(SolverError::InvalidInitialCondition)` if the initial condition contains
-/// NaN or infinite values, `Err(SolverError::InvalidStepSize)` if `dt` is zero or
-/// negative, or `Err(SolverError::EventError)` if an event function returns
-/// an invalid value.
+/// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero or negative, or
+/// `Err(SolverError::EventError)` if an event function returns an invalid value.
 ///
 /// # Example
 ///
@@ -593,7 +579,7 @@ where
 /// use raznoor::{ODEProblem, solve, RUNGE_KUTTA_4};
 ///
 /// let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
-/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
+/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
 ///
 /// let sol = solve(&prob, &RUNGE_KUTTA_4, 0.01).unwrap();
 /// let u_last = sol.u[[0, sol.t.len() - 1]];
@@ -634,8 +620,7 @@ where
 /// `Ok(ODESolution<T>)` containing the time grid and state trajectories.
 ///
 /// # Errors
-/// Returns `Err(SolverError::InvalidInitialCondition)` if the initial condition contains
-/// NaN or infinite values, `Err(SolverError::InvalidStepSize)` if `dt` is zero,
+/// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero,
 /// `Err(SolverError::AdaptiveNotSupported)` if the method does not provide distinct
 /// embedded coefficients, or `Err(SolverError::EventError)` if an event function returns
 /// an invalid value.
@@ -647,7 +632,7 @@ where
 /// use raznoor::{ODEProblem, solve_adaptive, DORMAND_PRINCE45};
 ///
 /// let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
-/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
+/// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
 /// let sol = solve_adaptive(&prob, &DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
 /// let u_last = sol.u[[0, sol.t.len() - 1]];
 /// let u_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
