@@ -8,6 +8,11 @@ use crate::solver::core::{StepState, StepperContext, compute_stages, weighted_su
 use crate::solver::events::detect_events;
 use crate::types::{EventRecord, ODEProblem, ODESolution, SolverError};
 
+const SAFETY_FACTOR: f64 = 0.9;
+const MAX_STEP_CHANGE: f64 = 5.0;
+const MIN_STEP_CHANGE: f64 = 0.2;
+const MAX_STEPS: usize = 10_000_000;
+
 /// Adaptive step-size solver configuration.
 ///
 /// Wraps an embedded Runge-Kutta pair (e.g. Fehlberg45 or Dormand–Prince),
@@ -35,6 +40,7 @@ pub struct AdaptiveODESolver<T> {
     dt: T,
     atol: T,
     rtol: T,
+    max_steps: usize,
 }
 
 impl<T: Float> AdaptiveODESolver<T> {
@@ -56,6 +62,7 @@ impl<T: Float> AdaptiveODESolver<T> {
             dt,
             atol,
             rtol,
+            max_steps: MAX_STEPS,
         })
     }
 
@@ -82,6 +89,22 @@ impl<T: Float> AdaptiveODESolver<T> {
     pub fn rtol(&self) -> T {
         self.rtol
     }
+
+    /// Set the maximum number of steps allowed.
+    ///
+    /// The solver will stop after this many steps and return the solution
+    /// computed so far. Defaults to [`MAX_STEPS`] (10 million).
+    #[must_use]
+    pub fn with_max_steps(mut self, max_steps: usize) -> Self {
+        self.max_steps = max_steps;
+        self
+    }
+
+    /// Return the maximum number of steps allowed.
+    #[must_use]
+    pub fn max_steps(&self) -> usize {
+        self.max_steps
+    }
 }
 
 #[allow(clippy::too_many_lines)]
@@ -107,10 +130,10 @@ where
         let direction = if tf >= t0 { T::one() } else { -T::one() };
         let stages = self.method.c.len();
 
-        let safety = T::from_f64(0.9).unwrap();
-        let max_factor = T::from_f64(5.0).unwrap();
-        let min_factor = T::from_f64(0.2).unwrap();
-        let max_steps = 10_000_000;
+        let safety = T::from_f64(SAFETY_FACTOR).unwrap();
+        let max_factor = T::from_f64(MAX_STEP_CHANGE).unwrap();
+        let min_factor = T::from_f64(MIN_STEP_CHANGE).unwrap();
+        let max_steps = self.max_steps;
         let order_p1 = T::from_usize(5).unwrap();
 
         let mut ts: Vec<T> = Vec::new();
