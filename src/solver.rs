@@ -164,7 +164,7 @@ fn validate_initial_condition<T: Float>(u0: &Array1<T>) -> Result<(), SolverErro
 /// let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
 /// let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1));
 ///
-/// let config = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01);
+/// let config = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap();
 /// let sol = config.solve(&prob).unwrap();
 /// ```
 pub trait ODESolver<T, F>
@@ -200,23 +200,40 @@ where
 ///     (1.0, 1.1),
 /// );
 ///
-/// let config = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01);
+/// let config = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap();
 /// let sol = config.solve(&prob).unwrap();
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct FixedStepODESolver<T> {
     /// The Runge-Kutta method to use.
-    pub method: ExplicitRungeKuttaMethod<f64>,
+    method: ExplicitRungeKuttaMethod<f64>,
     /// The absolute step size. The direction of integration is determined
     /// by the time span (i.e., `tspan.0` → `tspan.1`). Must be positive.
-    pub dt: T,
+    dt: T,
 }
 
-impl<T> FixedStepODESolver<T> {
+impl<T: Float> FixedStepODESolver<T> {
     /// Create a new fixed-step solver configuration.
+    ///
+    /// # Errors
+    /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero or negative.
+    pub fn new(method: ExplicitRungeKuttaMethod<f64>, dt: T) -> Result<Self, SolverError> {
+        if dt <= T::zero() {
+            return Err(SolverError::InvalidStepSize);
+        }
+        Ok(Self { method, dt })
+    }
+
+    /// Return the Runge-Kutta method.
     #[must_use]
-    pub fn new(method: ExplicitRungeKuttaMethod<f64>, dt: T) -> Self {
-        Self { method, dt }
+    pub fn method(&self) -> &ExplicitRungeKuttaMethod<f64> {
+        &self.method
+    }
+
+    /// Return the absolute step size.
+    #[must_use]
+    pub fn dt(&self) -> T {
+        self.dt
     }
 }
 
@@ -238,32 +255,66 @@ impl<T> FixedStepODESolver<T> {
 ///     (1.0, 1.1),
 /// );
 ///
-/// let config = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6);
+/// let config = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();
 /// let sol = config.solve(&prob).unwrap();
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct AdaptiveODESolver<T> {
     /// The embedded Runge-Kutta pair for error estimation.
-    pub method: ExplicitRungeKuttaMethod<f64>,
+    method: ExplicitRungeKuttaMethod<f64>,
     /// Initial step size guess. The direction of integration is determined
     /// by the time span (i.e., `tspan.0` → `tspan.1`). Must not be zero.
-    pub dt: T,
+    dt: T,
     /// Absolute tolerance for the error per step.
-    pub atol: T,
+    atol: T,
     /// Relative tolerance for the error per step.
-    pub rtol: T,
+    rtol: T,
 }
 
-impl<T> AdaptiveODESolver<T> {
+impl<T: Float> AdaptiveODESolver<T> {
     /// Create a new adaptive solver configuration.
-    #[must_use]
-    pub fn new(method: ExplicitRungeKuttaMethod<f64>, dt: T, atol: T, rtol: T) -> Self {
-        Self {
+    ///
+    /// # Errors
+    /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero.
+    pub fn new(
+        method: ExplicitRungeKuttaMethod<f64>,
+        dt: T,
+        atol: T,
+        rtol: T,
+    ) -> Result<Self, SolverError> {
+        if dt == T::zero() {
+            return Err(SolverError::InvalidStepSize);
+        }
+        Ok(Self {
             method,
             dt,
             atol,
             rtol,
-        }
+        })
+    }
+
+    /// Return the embedded Runge-Kutta pair.
+    #[must_use]
+    pub fn method(&self) -> &ExplicitRungeKuttaMethod<f64> {
+        &self.method
+    }
+
+    /// Return the initial step size guess.
+    #[must_use]
+    pub fn dt(&self) -> T {
+        self.dt
+    }
+
+    /// Return the absolute tolerance.
+    #[must_use]
+    pub fn atol(&self) -> T {
+        self.atol
+    }
+
+    /// Return the relative tolerance.
+    #[must_use]
+    pub fn rtol(&self) -> T {
+        self.rtol
     }
 }
 
@@ -274,9 +325,6 @@ where
 {
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError> {
         validate_initial_condition(&prob.u0)?;
-        if self.dt <= T::zero() {
-            return Err(SolverError::InvalidStepSize);
-        }
         let dt = if prob.tspan.1 >= prob.tspan.0 {
             self.dt
         } else {
@@ -384,9 +432,6 @@ where
 {
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError> {
         validate_initial_condition(&prob.u0)?;
-        if self.dt == T::zero() {
-            return Err(SolverError::InvalidStepSize);
-        }
         if self.method.b == self.method.b_hat {
             return Err(SolverError::AdaptiveNotSupported);
         }
@@ -564,11 +609,7 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    FixedStepODESolver {
-        method: *method,
-        dt,
-    }
-    .solve(prob)
+    FixedStepODESolver::new(*method, dt)?.solve(prob)
 }
 
 /// Solve an ODE problem using variable step-size (adaptive) integration.
@@ -623,11 +664,5 @@ where
     T: Float + FromPrimitive,
     F: Fn(T, &Array1<T>) -> Array1<T>,
 {
-    AdaptiveODESolver {
-        method: *method,
-        dt,
-        atol,
-        rtol,
-    }
-    .solve(prob)
+    AdaptiveODESolver::new(*method, dt, atol, rtol)?.solve(prob)
 }
