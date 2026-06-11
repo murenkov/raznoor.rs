@@ -1,17 +1,21 @@
-use ndarray::{Array1, Array2};
+use ndarray::Array2;
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
-use crate::butcher::ExplicitRungeKuttaMethod;
+use crate::solver::ODEMethod;
 use crate::solver::ODESolver;
-use crate::solver::core::{StepperContext, compute_stages, weighted_sum};
-use crate::solver::events::{StepData, StepOutcome, handle_step_events};
+use crate::solver::events::{MethodStepper, StepData, StepOutcome, handle_step_events};
 use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 /// Fixed-step solver configuration.
 ///
-/// Wraps a Runge-Kutta method and a constant step size. Use this with
+/// Wraps an ODE integration method and a constant step size. Use this with
 /// [`ODESolver::solve`] directly.
+///
+/// # Type parameters
+///
+/// * `M` — The integration method type (e.g. [`ExplicitRungeKuttaMethod`]).
+/// * `T` — The floating-point scalar type.
 ///
 /// # Example
 ///
@@ -29,26 +33,26 @@ use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 /// let sol = config.solve(&prob).unwrap();
 /// ```
 #[derive(Clone, Copy, Debug)]
-pub struct FixedStepODESolver<T> {
-    method: ExplicitRungeKuttaMethod<f64>,
+pub struct FixedStepODESolver<M, T> {
+    method: M,
     dt: T,
 }
 
-impl<T: Float> FixedStepODESolver<T> {
+impl<M, T: Float> FixedStepODESolver<M, T> {
     /// Create a new fixed-step solver configuration.
     ///
     /// # Errors
     /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero or negative.
-    pub fn new(method: ExplicitRungeKuttaMethod<f64>, dt: T) -> Result<Self, SolverError> {
+    pub fn new(method: M, dt: T) -> Result<Self, SolverError> {
         if dt <= T::zero() {
             return Err(SolverError::InvalidStepSize);
         }
         Ok(Self { method, dt })
     }
 
-    /// Return the Runge-Kutta method.
+    /// Return the integration method.
     #[must_use]
-    pub fn method(&self) -> &ExplicitRungeKuttaMethod<f64> {
+    pub fn method(&self) -> &M {
         &self.method
     }
 
@@ -59,8 +63,9 @@ impl<T: Float> FixedStepODESolver<T> {
     }
 }
 
-impl<T, F> ODESolver<T, F> for FixedStepODESolver<T>
+impl<M, T, F> ODESolver<T, F> for FixedStepODESolver<M, T>
 where
+    M: ODEMethod<T>,
     T: Float + FromPrimitive,
     F: RhsODEFn<T>,
 {
@@ -69,33 +74,23 @@ where
 
         let n = prob.u0.len();
         let n_steps = ts.len();
-        let stages = self.method.c.len();
 
         let mut u = Array2::<T>::zeros((n, n_steps));
         u.column_mut(0).assign(&prob.u0);
 
-        let mut ks = vec![Array1::<T>::zeros(n); stages];
-        let mut arg = Array1::<T>::zeros(n);
+        let mut scratch = self.method.prepare(n);
         let mut u_curr = prob.u0.clone();
         let mut events: Vec<EventRecord<T>> = Vec::new();
         let mut final_step = n_steps;
-        let mut ctx = StepperContext {
-            method: &self.method,
-            f: &prob.f,
-            ks: &mut ks,
-            arg: &mut arg,
-        };
 
         for i in 0..n_steps - 1 {
             let dt = ts[i + 1] - ts[i];
             let t_prev = ts[i];
+            let f = &prob.f;
 
-            compute_stages(t_prev, dt, &u_curr, &mut ctx);
-            let du = weighted_sum(ctx.ks, ctx.method.b);
-
-            let u_new = ndarray::Zip::from(&u_curr)
-                .and(&du)
-                .map_collect(|&uv, &duv| uv + dt * duv);
+            let u_new = self
+                .method
+                .step_with_scratch(f, t_prev, dt, &u_curr, &mut scratch);
 
             if prob.events.is_empty() {
                 u.column_mut(i + 1).assign(&u_new);
@@ -107,7 +102,12 @@ where
                     t_prev,
                     t_next: ts[i + 1],
                 };
-                let outcome = handle_step_events(&mut ctx, &step, &prob.events)?;
+                let mut stepper = MethodStepper {
+                    method: &self.method,
+                    f,
+                    scratch: &mut scratch,
+                };
+                let outcome = handle_step_events(&mut stepper, &step, &prob.events)?;
                 match outcome {
                     StepOutcome::None => {
                         u.column_mut(i + 1).assign(&u_new);
