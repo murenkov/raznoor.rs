@@ -6,7 +6,7 @@ use crate::butcher::ExplicitRungeKuttaMethod;
 use crate::solver::ODESolver;
 use crate::solver::core::{StepState, StepperContext, compute_stages, weighted_sum};
 use crate::solver::events::detect_events;
-use crate::types::{EventRecord, ODEProblem, ODESolution, SolverError};
+use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 const SAFETY_FACTOR: f64 = 0.9;
 const MAX_STEP_CHANGE: f64 = 5.0;
@@ -111,7 +111,7 @@ impl<T: Float> AdaptiveODESolver<T> {
 impl<T, F> ODESolver<T, F> for AdaptiveODESolver<T>
 where
     T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
+    F: RhsODEFn<T>,
 {
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError> {
         if self.method.b == self.method.b_hat {

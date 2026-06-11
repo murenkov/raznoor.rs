@@ -2,6 +2,17 @@ use ndarray::{Array1, Array2};
 use num_traits::Float;
 use std::sync::Arc;
 
+/// Trait alias for the ODE right-hand side function `f(t, u)`.
+///
+/// Defines the signature `f(t, u) -> u'` for a system of ODEs where `u` is the
+/// state vector and `u'` is its time derivative.
+///
+/// This trait is automatically implemented for all closures and function items
+/// matching the signature `Fn(T, &Array1<T>) -> Array1<T>`.
+pub trait RhsODEFn<T>: Fn(T, &Array1<T>) -> Array1<T> {}
+
+impl<T, F> RhsODEFn<T> for F where F: Fn(T, &Array1<T>) -> Array1<T> {}
+
 /// Type alias for an event function `g(t, u)`.
 ///
 /// The event function takes the current time `t` and state vector `u`, and returns

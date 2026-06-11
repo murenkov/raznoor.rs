@@ -62,5 +62,6 @@ pub use butcher::{
 };
 pub use solver::{AdaptiveODESolver, EnsembleODESolver, FixedStepODESolver, ODESolver};
 pub use types::{
-    EnsembleODEProblem, Event, EventDirection, EventRecord, ODEProblem, ODESolution, SolverError,
+    EnsembleODEProblem, Event, EventDirection, EventRecord, ODEProblem, ODESolution, RhsODEFn,
+    SolverError,
 };
