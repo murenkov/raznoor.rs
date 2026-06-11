@@ -4,8 +4,8 @@ use num_traits::FromPrimitive;
 
 use crate::butcher::ExplicitRungeKuttaMethod;
 use crate::solver::ODESolver;
-use crate::solver::core::{StepState, StepperContext, compute_stages, weighted_sum};
-use crate::solver::events::detect_events;
+use crate::solver::core::{StepperContext, compute_stages, weighted_sum};
+use crate::solver::events::{StepData, StepOutcome, handle_step_events};
 use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 const SAFETY_FACTOR: f64 = 0.9;
@@ -201,38 +201,34 @@ where
             if err <= T::one() {
                 let t_new = t_prev + dt_adaptive;
 
-                if !prob.events.is_empty() {
-                    let prev_state = StepState {
-                        t: t_prev,
-                        u: &u_curr,
-                    };
-                    let curr_state = StepState {
-                        t: t_new,
-                        u: &u_new,
-                    };
-                    let detected = detect_events(&prev_state, &curr_state, &prob.events, &mut ctx)?;
+                let step = StepData {
+                    u_curr: &u_curr,
+                    u_new: &u_new,
+                    t_prev,
+                    t_next: t_new,
+                };
+                let outcome = handle_step_events(&mut ctx, &step, &prob.events)?;
 
-                    if let Some(record) = detected.into_iter().next() {
-                        let terminal = prob.events[record.event_index].terminal;
+                let (t_new_val, u_new_val, is_terminal) = match outcome {
+                    StepOutcome::None => (t_new, u_new, false),
+                    StepOutcome::NonTerminalEvent(record) => {
                         events.push(record.clone());
-
-                        t = record.t;
-                        u_curr = record.u;
-                        ts.push(t);
-                        us_data.extend(u_curr.iter().copied());
-                        dt_adaptive = dt_adaptive * fac;
-
-                        if terminal {
-                            break;
-                        }
-                        continue;
+                        (record.t, record.u, false)
                     }
-                }
+                    StepOutcome::TerminalEvent(record) => {
+                        events.push(record.clone());
+                        (record.t, record.u, true)
+                    }
+                };
 
-                t = t_new;
-                u_curr = u_new;
+                t = t_new_val;
+                u_curr = u_new_val;
                 ts.push(t);
                 us_data.extend(u_curr.iter().copied());
+
+                if is_terminal {
+                    break;
+                }
             }
             dt_adaptive = dt_adaptive * fac;
         }
