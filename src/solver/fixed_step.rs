@@ -4,9 +4,9 @@ use num_traits::FromPrimitive;
 
 use crate::butcher::ExplicitRungeKuttaMethod;
 use crate::solver::ODESolver;
-use crate::solver::core::{StepState, StepperContext, compute_stages, weighted_sum};
-use crate::solver::events::detect_events;
-use crate::types::{Event, EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
+use crate::solver::core::{StepperContext, compute_stages, weighted_sum};
+use crate::solver::events::{StepData, StepOutcome, handle_step_events};
+use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 /// Fixed-step solver configuration.
 ///
@@ -93,26 +93,23 @@ where
             compute_stages(t_prev, dt, &u_curr, &mut ctx);
             let du = weighted_sum(ctx.ks, ctx.method.b);
 
+            let u_new = ndarray::Zip::from(&u_curr)
+                .and(&du)
+                .map_collect(|&uv, &duv| uv + dt * duv);
+
             if prob.events.is_empty() {
-                let mut col = u.column_mut(i + 1);
-                ndarray::Zip::from(&mut u_curr)
-                    .and(&mut col)
-                    .and(&du)
-                    .for_each(|uv, next, &duv| {
-                        *uv = *uv + dt * duv;
-                        *next = *uv;
-                    });
+                u.column_mut(i + 1).assign(&u_new);
+                u_curr = u_new;
             } else {
                 let step = StepData {
                     u_curr: &u_curr,
-                    du: &du,
-                    dt,
+                    u_new: &u_new,
                     t_prev,
                     t_next: ts[i + 1],
                 };
                 let outcome = handle_step_events(&mut ctx, &step, &prob.events)?;
                 match outcome {
-                    StepOutcome::Continue(u_new) => {
+                    StepOutcome::None => {
                         u.column_mut(i + 1).assign(&u_new);
                         u_curr = u_new;
                     }
@@ -161,68 +158,4 @@ fn generate_time_grid<T: Float + FromPrimitive>((t0, t1): (T, T), dt: T) -> Vec<
     }
     ts.push(t1);
     ts
-}
-
-/// Per-step data needed for event detection.
-struct StepData<'a, T> {
-    /// Current state vector.
-    u_curr: &'a Array1<T>,
-    /// Weighted sum of stage derivatives.
-    du: &'a Array1<T>,
-    /// Actual step size for this interval.
-    dt: T,
-    /// Time at the beginning of the step.
-    t_prev: T,
-    /// Time at the end of the step (before event adjustment).
-    t_next: T,
-}
-
-/// Result of event detection for a single integration step.
-enum StepOutcome<T> {
-    /// No event fired; the candidate state is returned.
-    Continue(Array1<T>),
-    /// A non-terminal event was detected.
-    NonTerminalEvent(EventRecord<T>),
-    /// A terminal event was detected; integration should stop.
-    TerminalEvent(EventRecord<T>),
-}
-
-/// Advance one step, detect zero-crossing events, and return the outcome.
-///
-/// Computes the candidate next state `u_new = u_curr + dt * du`, then checks
-/// all registered event functions for sign changes. Returns a [`StepOutcome`]
-/// describing whether to continue, record a non-terminal event, or stop.
-fn handle_step_events<T, F>(
-    ctx: &mut StepperContext<T, F>,
-    step: &StepData<T>,
-    prob_events: &[Event<T>],
-) -> Result<StepOutcome<T>, SolverError>
-where
-    T: Float + FromPrimitive,
-    F: RhsODEFn<T>,
-{
-    let u_new = ndarray::Zip::from(step.u_curr)
-        .and(step.du)
-        .map_collect(|&uv, &duv| uv + step.dt * duv);
-
-    let prev_state = StepState {
-        t: step.t_prev,
-        u: step.u_curr,
-    };
-    let curr_state = StepState {
-        t: step.t_next,
-        u: &u_new,
-    };
-    let detected = detect_events(&prev_state, &curr_state, prob_events, ctx)?;
-
-    Ok(match detected.into_iter().next() {
-        Some(record) => {
-            if prob_events[record.event_index].terminal {
-                StepOutcome::TerminalEvent(record)
-            } else {
-                StepOutcome::NonTerminalEvent(record)
-            }
-        }
-        None => StepOutcome::Continue(u_new),
-    })
 }

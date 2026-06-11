@@ -84,3 +84,61 @@ where
     records.sort_by(|a, b| a.t.partial_cmp(&b.t).unwrap_or(std::cmp::Ordering::Equal));
     Ok(records)
 }
+
+/// Per-step data bundle for event detection.
+///
+/// Both fields (`u_curr` and `u_new`) must refer to states on the same
+/// step interval `[t_prev, t_next]`.
+pub(crate) struct StepData<'a, T> {
+    pub(crate) u_curr: &'a Array1<T>,
+    pub(crate) u_new: &'a Array1<T>,
+    pub(crate) t_prev: T,
+    pub(crate) t_next: T,
+}
+
+/// Result of event detection for a single integration step.
+pub(crate) enum StepOutcome<T> {
+    /// No event fired; the candidate state is usable.
+    None,
+    /// A non-terminal event was detected.
+    NonTerminalEvent(EventRecord<T>),
+    /// A terminal event was detected; integration should stop.
+    TerminalEvent(EventRecord<T>),
+}
+
+/// Advance one step, detect zero-crossing events, and return the outcome.
+///
+/// Checks all registered event functions for sign changes between
+/// `step.u_curr` (at `t_prev`) and `step.u_new` (at `t_next`). Returns
+/// a [`StepOutcome`] describing whether to continue, record a non-terminal
+/// event, or stop.
+pub(crate) fn handle_step_events<T, F>(
+    ctx: &mut StepperContext<T, F>,
+    step: &StepData<T>,
+    prob_events: &[Event<T>],
+) -> Result<StepOutcome<T>, SolverError>
+where
+    T: Float + FromPrimitive,
+    F: RhsODEFn<T>,
+{
+    let prev_state = StepState {
+        t: step.t_prev,
+        u: step.u_curr,
+    };
+    let curr_state = StepState {
+        t: step.t_next,
+        u: step.u_new,
+    };
+    let detected = detect_events(&prev_state, &curr_state, prob_events, ctx)?;
+
+    Ok(match detected.into_iter().next() {
+        Some(record) => {
+            if prob_events[record.event_index].terminal {
+                StepOutcome::TerminalEvent(record)
+            } else {
+                StepOutcome::NonTerminalEvent(record)
+            }
+        }
+        None => StepOutcome::None,
+    })
+}
