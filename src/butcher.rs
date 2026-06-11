@@ -255,3 +255,116 @@ pub const DORMAND_PRINCE45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMe
     ],
     c: &[0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0],
 };
+
+use ndarray::Array1;
+use num_traits::Float;
+use num_traits::FromPrimitive;
+
+use crate::solver::ODEMethod;
+use crate::types::RhsODEFn;
+
+/// Pre-allocated scratch buffers for an explicit Runge–Kutta method.
+///
+/// Created once by [`ExplicitRungeKuttaMethod::prepare`] and reused on every
+/// step to avoid per-step allocations.
+#[derive(Debug, Clone)]
+pub struct ExplicitRKScratch<T> {
+    /// Stage derivative vectors `k_1 … k_s`.
+    pub(crate) ks: Vec<Array1<T>>,
+    /// Temporary argument buffer used when computing each stage.
+    pub(crate) arg: Array1<T>,
+}
+
+impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
+    type Scratch = ExplicitRKScratch<T>;
+
+    fn prepare(&self, n_vars: usize) -> Self::Scratch {
+        ExplicitRKScratch {
+            ks: vec![Array1::zeros(n_vars); self.c.len()],
+            arg: Array1::zeros(n_vars),
+        }
+    }
+
+    fn step_with_scratch<F: RhsODEFn<T>>(
+        &self,
+        f: &F,
+        t: T,
+        dt: T,
+        u: &Array1<T>,
+        scratch: &mut Self::Scratch,
+    ) -> Array1<T> {
+        compute_stages(f, t, dt, u, self, scratch);
+        let du = weighted_sum(&scratch.ks, self.b);
+        ndarray::Zip::from(u)
+            .and(&du)
+            .map_collect(|&uv, &duv| uv + dt * duv)
+    }
+
+    fn step_with_error_with_scratch<F: RhsODEFn<T>>(
+        &self,
+        f: &F,
+        t: T,
+        dt: T,
+        u: &Array1<T>,
+        scratch: &mut Self::Scratch,
+    ) -> (Array1<T>, Array1<T>) {
+        compute_stages(f, t, dt, u, self, scratch);
+        let du = weighted_sum(&scratch.ks, self.b);
+        let b_diff: Vec<f64> = self
+            .b
+            .iter()
+            .zip(self.b_hat.iter())
+            .map(|(&b, &bh)| b - bh)
+            .collect();
+        let delta = weighted_sum(&scratch.ks, &b_diff);
+        let u_new = ndarray::Zip::from(u)
+            .and(&du)
+            .map_collect(|&uv, &duv| uv + dt * duv);
+        (u_new, delta)
+    }
+
+    fn supports_adaptive(&self) -> bool {
+        self.b != self.b_hat
+    }
+}
+
+/// Fill `scratch.ks[m]` with `f(t + c[m]*dt, u + dt*∑ a[m][j]·k[j])`.
+fn compute_stages<T, F>(
+    f: &F,
+    t: T,
+    dt: T,
+    u: &Array1<T>,
+    method: &ExplicitRungeKuttaMethod<f64>,
+    scratch: &mut ExplicitRKScratch<T>,
+) where
+    T: Float + FromPrimitive,
+    F: RhsODEFn<T>,
+{
+    for m in 0..method.c.len() {
+        scratch.arg.assign(u);
+        for (j, k) in scratch.ks.iter().enumerate() {
+            let coeff = T::from_f64(method.a[m][j]).unwrap();
+            if coeff != T::zero() {
+                ndarray::Zip::from(&mut scratch.arg)
+                    .and(k)
+                    .for_each(|a, &kv| *a = *a + dt * coeff * kv);
+            }
+        }
+        scratch.ks[m] = f(t + T::from_f64(method.c[m]).unwrap() * dt, &scratch.arg);
+    }
+}
+
+/// Compute the weighted sum `∑ weights[m] · ks[m]`.
+fn weighted_sum<T: Float + FromPrimitive>(ks: &[Array1<T>], weights: &[f64]) -> Array1<T> {
+    let n = ks[0].len();
+    let mut sum = Array1::<T>::zeros(n);
+    for (m, k) in ks.iter().enumerate() {
+        let coeff = T::from_f64(weights[m]).unwrap();
+        if coeff != T::zero() {
+            ndarray::Zip::from(&mut sum)
+                .and(k)
+                .for_each(|s, &kv| *s = *s + coeff * kv);
+        }
+    }
+    sum
+}

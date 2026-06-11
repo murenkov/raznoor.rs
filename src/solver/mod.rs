@@ -6,10 +6,89 @@ pub mod fixed_step;
 pub use adaptive::AdaptiveODESolver;
 pub use fixed_step::FixedStepODESolver;
 
+use ndarray::Array1;
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
 use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, RhsODEFn, SolverError};
+
+/// A single-step ODE integration method.
+///
+/// Implementors provide the per-step integration logic, enabling both
+/// fixed-step and adaptive-step solvers to work with any method family
+/// (e.g. explicit Runge–Kutta, implicit RK, BDF).
+///
+/// # Scratch space
+///
+/// The associated [`Scratch`](ODEMethod::Scratch) type holds pre-allocated
+/// buffers that the solver creates once via [`prepare`](ODEMethod::prepare)
+/// and reuses on every step via
+/// [`step_with_scratch`](ODEMethod::step_with_scratch).  The convenience
+/// methods [`step`](ODEMethod::step) and
+/// [`step_with_error`](ODEMethod::step_with_error) allocate scratch
+/// internally and are suitable for one-off steps (e.g. event bisection).
+pub trait ODEMethod<T: Float>: Sized {
+    /// Scratch buffer type, allocated once by the solver and reused on every step.
+    type Scratch;
+
+    /// Allocate scratch buffers for `n_vars`-dimensional state vectors.
+    ///
+    /// Called once by the solver before the integration loop.
+    fn prepare(&self, n_vars: usize) -> Self::Scratch;
+
+    /// Take a single step from `t` to `t + dt` using pre-allocated scratch.
+    fn step_with_scratch<F: RhsODEFn<T>>(
+        &self,
+        f: &F,
+        t: T,
+        dt: T,
+        u: &Array1<T>,
+        scratch: &mut Self::Scratch,
+    ) -> Array1<T>;
+
+    /// Take a single step from `t` to `t + dt`, allocating scratch internally.
+    ///
+    /// The default implementation calls [`prepare`](ODEMethod::prepare)
+    /// and [`step_with_scratch`](ODEMethod::step_with_scratch).
+    fn step<F: RhsODEFn<T>>(&self, f: &F, t: T, dt: T, u: &Array1<T>) -> Array1<T> {
+        let mut scratch = self.prepare(u.len());
+        self.step_with_scratch(f, t, dt, u, &mut scratch)
+    }
+
+    /// Take a single step and return an error estimate for adaptive stepping.
+    ///
+    /// Returns `(new_state, error_per_component)`.  The default implementation
+    /// delegates to [`step_with_scratch`](ODEMethod::step_with_scratch) and
+    /// returns a zero error vector (which disables adaptive stepping).
+    fn step_with_error_with_scratch<F: RhsODEFn<T>>(
+        &self,
+        f: &F,
+        t: T,
+        dt: T,
+        u: &Array1<T>,
+        scratch: &mut Self::Scratch,
+    ) -> (Array1<T>, Array1<T>) {
+        let u_new = self.step_with_scratch(f, t, dt, u, scratch);
+        (u_new, Array1::zeros(u.len()))
+    }
+
+    /// Take a single step and return an error estimate, allocating scratch internally.
+    fn step_with_error<F: RhsODEFn<T>>(
+        &self,
+        f: &F,
+        t: T,
+        dt: T,
+        u: &Array1<T>,
+    ) -> (Array1<T>, Array1<T>) {
+        let mut scratch = self.prepare(u.len());
+        self.step_with_error_with_scratch(f, t, dt, u, &mut scratch)
+    }
+
+    /// Whether this method supports adaptive step-size control.
+    fn supports_adaptive(&self) -> bool {
+        false
+    }
+}
 
 /// A solver that can integrate an [`ODEProblem`].
 ///
