@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 use rayon::prelude::*;
 
 use crate::solver::{AdaptiveODESolver, EnsembleODESolver, FixedStepODESolver, ODESolver};
-use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, SolverError};
+use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 fn solve_batch_impl<T, F, S>(
     solver: &S,
@@ -12,7 +12,7 @@ fn solve_batch_impl<T, F, S>(
 ) -> Vec<Result<ODESolution<T>, SolverError>>
 where
     T: Float + FromPrimitive + Send + Sync,
-    F: Fn(T, &Array1<T>) -> Array1<T> + Clone + Send + Sync,
+    F: RhsODEFn<T> + Clone + Send + Sync,
     S: ODESolver<T, F> + Sync,
 {
     (0..ensemble.u0().nrows())
@@ -33,7 +33,7 @@ where
 impl<T, F> EnsembleODESolver<T, F> for FixedStepODESolver<T>
 where
     T: Float + FromPrimitive + Send + Sync,
-    F: Fn(T, &Array1<T>) -> Array1<T> + Clone + Send + Sync,
+    F: RhsODEFn<T> + Clone + Send + Sync,
 {
     fn solve_batch(
         &self,
@@ -46,7 +46,7 @@ where
 impl<T, F> EnsembleODESolver<T, F> for AdaptiveODESolver<T>
 where
     T: Float + FromPrimitive + Send + Sync,
-    F: Fn(T, &Array1<T>) -> Array1<T> + Clone + Send + Sync,
+    F: RhsODEFn<T> + Clone + Send + Sync,
 {
     fn solve_batch(
         &self,

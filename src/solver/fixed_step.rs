@@ -6,7 +6,7 @@ use crate::butcher::ExplicitRungeKuttaMethod;
 use crate::solver::ODESolver;
 use crate::solver::core::{StepState, StepperContext, compute_stages, weighted_sum};
 use crate::solver::events::detect_events;
-use crate::types::{EventRecord, ODEProblem, ODESolution, SolverError};
+use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 /// Fixed-step solver configuration.
 ///
@@ -62,7 +62,7 @@ impl<T: Float> FixedStepODESolver<T> {
 impl<T, F> ODESolver<T, F> for FixedStepODESolver<T>
 where
     T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
+    F: RhsODEFn<T>,
 {
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError> {
         let dt = if prob.tspan.1 >= prob.tspan.0 {

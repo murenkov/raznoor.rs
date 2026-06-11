@@ -6,11 +6,10 @@ pub mod fixed_step;
 pub use adaptive::AdaptiveODESolver;
 pub use fixed_step::FixedStepODESolver;
 
-use ndarray::Array1;
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
-use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, SolverError};
+use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 /// A solver that can integrate an [`ODEProblem`].
 ///
@@ -29,7 +28,7 @@ use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, SolverError};
 pub trait ODESolver<T, F>
 where
     T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
+    F: RhsODEFn<T>,
 {
     /// Integrate the given ODE problem and return the solution.
     ///
@@ -68,7 +67,7 @@ where
 pub trait EnsembleODESolver<T, F>
 where
     T: Float + FromPrimitive + Send + Sync,
-    F: Fn(T, &Array1<T>) -> Array1<T> + Clone + Send + Sync,
+    F: RhsODEFn<T> + Clone + Send + Sync,
 {
     /// Solve all members of the ensemble in parallel and return per-member results.
     ///

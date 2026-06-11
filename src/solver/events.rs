@@ -3,7 +3,7 @@ use num_traits::Float;
 use num_traits::FromPrimitive;
 
 use crate::solver::core::{StepState, StepperContext, advance};
-use crate::types::{Event, EventDirection, EventRecord, SolverError};
+use crate::types::{Event, EventDirection, EventRecord, RhsODEFn, SolverError};
 
 pub(crate) fn bisect_event<T, F>(
     t_left: T,
@@ -15,7 +15,7 @@ pub(crate) fn bisect_event<T, F>(
 ) -> (T, Array1<T>)
 where
     T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
+    F: RhsODEFn<T>,
 {
     let mut tl = t_left;
     let mut tr = t_right;
@@ -51,7 +51,7 @@ pub(crate) fn detect_events<T, F>(
 ) -> Result<Vec<EventRecord<T>>, SolverError>
 where
     T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
+    F: RhsODEFn<T>,
 {
     let mut candidates: Vec<(usize, &Event<T>, T)> = Vec::new();
     for (idx, event) in events.iter().enumerate() {

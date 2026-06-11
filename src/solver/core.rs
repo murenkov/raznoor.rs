@@ -3,6 +3,7 @@ use num_traits::Float;
 use num_traits::FromPrimitive;
 
 use crate::butcher::ExplicitRungeKuttaMethod;
+use crate::types::RhsODEFn;
 
 pub(crate) struct StepperContext<'a, T, F> {
     pub(crate) method: &'a ExplicitRungeKuttaMethod<f64>,
@@ -19,7 +20,7 @@ pub(crate) struct StepState<'a, T> {
 pub(crate) fn compute_stages<T, F>(t: T, dt: T, u: &Array1<T>, ctx: &mut StepperContext<T, F>)
 where
     T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
+    F: RhsODEFn<T>,
 {
     let cast = |x: &f64| T::from_f64(*x).unwrap();
     for m in 0..ctx.method.c.len() {
@@ -57,7 +58,7 @@ pub(crate) fn weighted_sum<T: Float + FromPrimitive>(
 pub(crate) fn advance<T, F>(t: T, dt: T, u: &Array1<T>, ctx: &mut StepperContext<T, F>) -> Array1<T>
 where
     T: Float + FromPrimitive,
-    F: Fn(T, &Array1<T>) -> Array1<T>,
+    F: RhsODEFn<T>,
 {
     compute_stages(t, dt, u, ctx);
     let du = weighted_sum(ctx.ks, ctx.method.b);
