@@ -3,7 +3,9 @@ use num_traits::Float;
 use num_traits::FromPrimitive;
 use rayon::prelude::*;
 
-use crate::solver::{AdaptiveODESolver, EnsembleODESolver, FixedStepODESolver, ODESolver};
+use crate::solver::adaptive::AdaptiveODESolver;
+use crate::solver::fixed_step::FixedStepODESolver;
+use crate::solver::{EnsembleODESolver, ODEMethod, ODESolver};
 use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 fn solve_batch_impl<T, F, S>(
@@ -30,8 +32,9 @@ where
         .collect()
 }
 
-impl<T, F> EnsembleODESolver<T, F> for FixedStepODESolver<T>
+impl<M, T, F> EnsembleODESolver<T, F> for FixedStepODESolver<M, T>
 where
+    M: ODEMethod<T> + Sync,
     T: Float + FromPrimitive + Send + Sync,
     F: RhsODEFn<T> + Clone + Send + Sync,
 {
@@ -43,8 +46,9 @@ where
     }
 }
 
-impl<T, F> EnsembleODESolver<T, F> for AdaptiveODESolver<T>
+impl<M, T, F> EnsembleODESolver<T, F> for AdaptiveODESolver<M, T>
 where
+    M: ODEMethod<T> + Sync,
     T: Float + FromPrimitive + Send + Sync,
     F: RhsODEFn<T> + Clone + Send + Sync,
 {

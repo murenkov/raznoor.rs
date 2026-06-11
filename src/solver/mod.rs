@@ -1,5 +1,4 @@
 pub mod adaptive;
-pub(crate) mod core;
 pub(crate) mod events;
 pub mod fixed_step;
 
@@ -10,6 +9,7 @@ use ndarray::Array1;
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
+use crate::butcher::ExplicitRungeKuttaMethod;
 use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 /// A single-step ODE integration method.
@@ -89,6 +89,12 @@ pub trait ODEMethod<T: Float>: Sized {
         false
     }
 }
+
+/// Default fixed-step solver backed by an explicit Runge–Kutta method.
+pub type FixedStepRK<T = f64> = FixedStepODESolver<ExplicitRungeKuttaMethod<f64>, T>;
+
+/// Default adaptive solver backed by an explicit Runge–Kutta embedded pair.
+pub type AdaptiveRK<T = f64> = AdaptiveODESolver<ExplicitRungeKuttaMethod<f64>, T>;
 
 /// A solver that can integrate an [`ODEProblem`].
 ///

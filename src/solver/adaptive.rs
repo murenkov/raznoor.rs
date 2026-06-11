@@ -2,10 +2,9 @@ use ndarray::{Array1, Array2, ShapeBuilder};
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
-use crate::butcher::ExplicitRungeKuttaMethod;
+use crate::solver::ODEMethod;
 use crate::solver::ODESolver;
-use crate::solver::core::{StepperContext, compute_stages, weighted_sum};
-use crate::solver::events::{StepData, StepOutcome, handle_step_events};
+use crate::solver::events::{MethodStepper, StepData, StepOutcome, handle_step_events};
 use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 const SAFETY_FACTOR: f64 = 0.9;
@@ -15,9 +14,14 @@ const MAX_STEPS: usize = 10_000_000;
 
 /// Adaptive step-size solver configuration.
 ///
-/// Wraps an embedded Runge-Kutta pair (e.g. Fehlberg45 or Dormand–Prince),
-/// an initial step size, and error tolerances. Use this with
-/// [`ODESolver::solve`] directly.
+/// Wraps an ODE method with embedded error estimation (e.g. Fehlberg45 or
+/// Dormand–Prince), an initial step size, and error tolerances. Use this
+/// with [`ODESolver::solve`] directly.
+///
+/// # Type parameters
+///
+/// * `M` — The integration method type (e.g. [`ExplicitRungeKuttaMethod`]).
+/// * `T` — The floating-point scalar type.
 ///
 /// # Example
 ///
@@ -35,25 +39,20 @@ const MAX_STEPS: usize = 10_000_000;
 /// let sol = config.solve(&prob).unwrap();
 /// ```
 #[derive(Clone, Copy, Debug)]
-pub struct AdaptiveODESolver<T> {
-    method: ExplicitRungeKuttaMethod<f64>,
+pub struct AdaptiveODESolver<M, T> {
+    method: M,
     dt: T,
     atol: T,
     rtol: T,
     max_steps: usize,
 }
 
-impl<T: Float> AdaptiveODESolver<T> {
+impl<M, T: Float> AdaptiveODESolver<M, T> {
     /// Create a new adaptive solver configuration.
     ///
     /// # Errors
     /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero.
-    pub fn new(
-        method: ExplicitRungeKuttaMethod<f64>,
-        dt: T,
-        atol: T,
-        rtol: T,
-    ) -> Result<Self, SolverError> {
+    pub fn new(method: M, dt: T, atol: T, rtol: T) -> Result<Self, SolverError> {
         if dt == T::zero() {
             return Err(SolverError::InvalidStepSize);
         }
@@ -66,9 +65,9 @@ impl<T: Float> AdaptiveODESolver<T> {
         })
     }
 
-    /// Return the embedded Runge-Kutta pair.
+    /// Return the embedded method pair.
     #[must_use]
-    pub fn method(&self) -> &ExplicitRungeKuttaMethod<f64> {
+    pub fn method(&self) -> &M {
         &self.method
     }
 
@@ -107,21 +106,20 @@ impl<T: Float> AdaptiveODESolver<T> {
     }
 }
 
-impl<T, F> ODESolver<T, F> for AdaptiveODESolver<T>
+impl<M, T, F> ODESolver<T, F> for AdaptiveODESolver<M, T>
 where
+    M: ODEMethod<T>,
     T: Float + FromPrimitive,
     F: RhsODEFn<T>,
 {
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError> {
-        if self.method.b == self.method.b_hat {
+        if !self.method.supports_adaptive() {
             return Err(SolverError::AdaptiveNotSupported);
         }
-        let b_diff = compute_b_diff(&self.method);
         let n = prob.u0.len();
         let t0 = prob.tspan.0;
         let tf = prob.tspan.1;
         let direction = if tf >= t0 { T::one() } else { -T::one() };
-        let stages = self.method.c.len();
 
         let ctrl = StepControl {
             safety: T::from_f64(SAFETY_FACTOR).unwrap(),
@@ -142,14 +140,7 @@ where
         ts.push(t);
         us_data.extend(u_curr.iter().copied());
 
-        let mut ks = vec![Array1::<T>::zeros(n); stages];
-        let mut arg = Array1::<T>::zeros(n);
-        let mut ctx = StepperContext {
-            method: &self.method,
-            f: &prob.f,
-            ks: &mut ks,
-            arg: &mut arg,
-        };
+        let mut scratch = self.method.prepare(n);
 
         for _step in 0..max_steps {
             if (t - tf).abs() <= T::epsilon() {
@@ -161,15 +152,15 @@ where
             }
 
             let t_prev = t;
+            let f = &prob.f;
 
-            compute_stages(t_prev, dt_adaptive, &u_curr, &mut ctx);
-
-            let du = weighted_sum(ctx.ks, ctx.method.b);
-            let delta = weighted_sum(ctx.ks, &b_diff);
-
-            let u_new = ndarray::Zip::from(&u_curr)
-                .and(&du)
-                .map_collect(|&uv, &duv| uv + dt_adaptive * duv);
+            let (u_new, delta) = self.method.step_with_error_with_scratch(
+                f,
+                t_prev,
+                dt_adaptive,
+                &u_curr,
+                &mut scratch,
+            );
 
             let err = compute_error_norm(n, self.atol, self.rtol, dt_adaptive, &delta, &u_new);
 
@@ -184,7 +175,12 @@ where
                     t_prev,
                     t_next: t_new,
                 };
-                let outcome = handle_step_events(&mut ctx, &step, &prob.events)?;
+                let mut stepper = MethodStepper {
+                    method: &self.method,
+                    f,
+                    scratch: &mut scratch,
+                };
+                let outcome = handle_step_events(&mut stepper, &step, &prob.events)?;
 
                 let (t_new_val, u_new_val, is_terminal) = match outcome {
                     StepOutcome::None => (t_new, u_new, false),
@@ -220,17 +216,6 @@ where
             events,
         })
     }
-}
-
-/// Compute the coefficient difference `b - b_hat` for the embedded
-/// Runge-Kutta pair, used to estimate the local truncation error.
-fn compute_b_diff(method: &ExplicitRungeKuttaMethod<f64>) -> Vec<f64> {
-    method
-        .b
-        .iter()
-        .zip(method.b_hat.iter())
-        .map(|(&b, &bh)| b - bh)
-        .collect()
 }
 
 /// Compute the RMS (root-mean-square) error norm for the current step.

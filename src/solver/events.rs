@@ -2,20 +2,43 @@ use ndarray::Array1;
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
-use crate::solver::core::{StepState, StepperContext, advance};
+use crate::solver::ODEMethod;
 use crate::types::{Event, EventDirection, EventRecord, RhsODEFn, SolverError};
 
-pub(crate) fn bisect_event<T, F>(
+/// Trait abstracting a single-step ODE advance for event bisection.
+pub(crate) trait StepForward<T> {
+    fn step(&mut self, t: T, dt: T, u: &Array1<T>) -> Array1<T>;
+}
+
+/// Adapts an [`ODEMethod`] + right-hand side + scratch into a [`StepForward`].
+pub(crate) struct MethodStepper<'a, T: Float, M: ODEMethod<T>, F> {
+    pub method: &'a M,
+    pub f: &'a F,
+    pub scratch: &'a mut M::Scratch,
+}
+
+impl<T: Float, M: ODEMethod<T>, F: RhsODEFn<T>> StepForward<T> for MethodStepper<'_, T, M, F> {
+    fn step(&mut self, t: T, dt: T, u: &Array1<T>) -> Array1<T> {
+        self.method
+            .step_with_scratch(self.f, t, dt, u, self.scratch)
+    }
+}
+
+pub(crate) struct StepState<'a, T> {
+    pub(crate) t: T,
+    pub(crate) u: &'a Array1<T>,
+}
+
+pub(crate) fn bisect_event<T>(
     t_left: T,
     t_right: T,
     u_left: &Array1<T>,
     g_left: T,
     g: &dyn Fn(T, &Array1<T>) -> T,
-    ctx: &mut StepperContext<T, F>,
+    stepper: &mut dyn StepForward<T>,
 ) -> (T, Array1<T>)
 where
     T: Float + FromPrimitive,
-    F: RhsODEFn<T>,
 {
     let mut tl = t_left;
     let mut tr = t_right;
@@ -23,7 +46,7 @@ where
     let mut gl = g_left;
     for _ in 0..60 {
         let tm = (tl + tr) / T::from_f64(2.0).unwrap();
-        let um = advance(tl, tm - tl, &ul, ctx);
+        let um = stepper.step(tl, tm - tl, &ul);
         let gm = g(tm, &um);
         let gm_pos = gm > T::zero();
         if gm_pos == (gl > T::zero()) {
@@ -39,19 +62,18 @@ where
             break;
         }
     }
-    let u_event = advance(tl, tr - tl, &ul, ctx);
+    let u_event = stepper.step(tl, tr - tl, &ul);
     (tr, u_event)
 }
 
-pub(crate) fn detect_events<T, F>(
+pub(crate) fn detect_events<T>(
     prev: &StepState<T>,
     curr: &StepState<T>,
     events: &[Event<T>],
-    ctx: &mut StepperContext<T, F>,
+    stepper: &mut dyn StepForward<T>,
 ) -> Result<Vec<EventRecord<T>>, SolverError>
 where
     T: Float + FromPrimitive,
-    F: RhsODEFn<T>,
 {
     let mut candidates: Vec<(usize, &Event<T>, T)> = Vec::new();
     for (idx, event) in events.iter().enumerate() {
@@ -74,7 +96,7 @@ where
     }
     let mut records: Vec<EventRecord<T>> = Vec::with_capacity(candidates.len());
     for (idx, event, g_prev) in candidates {
-        let (t_event, u_event) = bisect_event(prev.t, curr.t, prev.u, g_prev, &*event.g, ctx);
+        let (t_event, u_event) = bisect_event(prev.t, curr.t, prev.u, g_prev, &*event.g, stepper);
         records.push(EventRecord {
             event_index: idx,
             t: t_event,
@@ -112,14 +134,13 @@ pub(crate) enum StepOutcome<T> {
 /// `step.u_curr` (at `t_prev`) and `step.u_new` (at `t_next`). Returns
 /// a [`StepOutcome`] describing whether to continue, record a non-terminal
 /// event, or stop.
-pub(crate) fn handle_step_events<T, F>(
-    ctx: &mut StepperContext<T, F>,
+pub(crate) fn handle_step_events<T>(
+    stepper: &mut dyn StepForward<T>,
     step: &StepData<T>,
     prob_events: &[Event<T>],
 ) -> Result<StepOutcome<T>, SolverError>
 where
     T: Float + FromPrimitive,
-    F: RhsODEFn<T>,
 {
     let prev_state = StepState {
         t: step.t_prev,
@@ -129,7 +150,7 @@ where
         t: step.t_next,
         u: step.u_new,
     };
-    let detected = detect_events(&prev_state, &curr_state, prob_events, ctx)?;
+    let detected = detect_events(&prev_state, &curr_state, prob_events, stepper)?;
 
     Ok(match detected.into_iter().next() {
         Some(record) => {
