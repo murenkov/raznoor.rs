@@ -1,4 +1,4 @@
-//! Explicit Runge-Kutta ODE solver for scalar and system initial value problems.
+//! Explicit and implicit Runge-Kutta ODE solvers for scalar and system initial value problems.
 //!
 //! # Example
 //!
@@ -49,6 +49,9 @@ pub mod types;
 /// Butcher tableaus for explicit Runge-Kutta methods.
 pub mod erk;
 
+/// Butcher tableaus and Newton-based solver for implicit Runge-Kutta methods.
+pub mod irk;
+
 /// Fixed-step and adaptive ODE solvers.
 mod solver;
 
@@ -59,6 +62,10 @@ pub mod batch;
 pub use erk::{
     DORMAND_PRINCE45, ExplicitRKScratch, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
     RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
+};
+pub use irk::{
+    BACKWARD_EULER, BEULER, CRANK_NICOLSON, GAUSS_LEGENDRE_4, IMPLICIT_MIDPOINT, ImplicitRKScratch,
+    ImplicitRungeKuttaMethod, MIDPOINT_IMP, RADAU_IIA_3, RADAU_IIA_5, TRAPEZOIDAL,
 };
 pub use solver::{
     AdaptiveODESolver, AdaptiveRK, EnsembleODESolver, FixedStepODESolver, FixedStepRK, ODEMethod,

@@ -1,11 +1,13 @@
 # raznoor
 
-A Rust library for solving ordinary differential equations (ODEs) using explicit Runge-Kutta methods.
+A Rust library for solving ordinary differential equations (ODEs) using explicit and implicit Runge-Kutta methods.
 
 ## Features
 
 - Explicit Runge-Kutta methods of orders 1 through 5
 - Adaptive embedded Runge-Kutta pairs (Fehlberg45, Dormand–Prince45)
+- **Implicit** Runge-Kutta methods: Backward Euler, Implicit Midpoint, Crank–Nicolson, Gauss–Legendre 4, Radau IIA (orders 3 and 5)
+- Implicit methods use simplified Newton iteration with finite-difference Jacobian (no user-provided Jacobian required)
 - Event detection (root-finding during integration) with terminal and directional events
 - Generic over floating-point types (`f32`, `f64`)
 - Error handling via `SolverError` instead of panics
