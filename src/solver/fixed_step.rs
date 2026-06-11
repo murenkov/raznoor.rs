@@ -6,7 +6,7 @@ use crate::butcher::ExplicitRungeKuttaMethod;
 use crate::solver::ODESolver;
 use crate::solver::core::{StepState, StepperContext, compute_stages, weighted_sum};
 use crate::solver::events::detect_events;
-use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
+use crate::types::{Event, EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 /// Fixed-step solver configuration.
 ///
@@ -65,21 +65,7 @@ where
     F: RhsODEFn<T>,
 {
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError> {
-        let dt = if prob.tspan.1 >= prob.tspan.0 {
-            self.dt
-        } else {
-            -self.dt
-        };
-        let n_steps_floor =
-            num_traits::cast::<T, usize>(((prob.tspan.1 - prob.tspan.0) / dt).floor()).unwrap_or(0);
-        let mut ts: Vec<T> = Vec::with_capacity(n_steps_floor + 2);
-        ts.push(prob.tspan.0);
-        for i in 1..n_steps_floor {
-            ts.push(
-                prob.tspan.0 + dt * T::from_usize(i).expect("step index fits in the numeric type"),
-            );
-        }
-        ts.push(prob.tspan.1);
+        let mut ts = generate_time_grid(prob.tspan, self.dt);
 
         let n = prob.u0.len();
         let n_steps = ts.len();
@@ -117,37 +103,33 @@ where
                         *next = *uv;
                     });
             } else {
-                let u_new = ndarray::Zip::from(&u_curr)
-                    .and(&du)
-                    .map_collect(|&uv, &duv| uv + dt * duv);
-
-                let prev_state = StepState {
-                    t: t_prev,
-                    u: &u_curr,
+                let step = StepData {
+                    u_curr: &u_curr,
+                    du: &du,
+                    dt,
+                    t_prev,
+                    t_next: ts[i + 1],
                 };
-                let curr_state = StepState {
-                    t: ts[i + 1],
-                    u: &u_new,
-                };
-                let detected = detect_events(&prev_state, &curr_state, &prob.events, &mut ctx)?;
-
-                if let Some(record) = detected.into_iter().next() {
-                    let terminal = prob.events[record.event_index].terminal;
-                    events.push(record.clone());
-
-                    ts[i + 1] = record.t;
-                    u.column_mut(i + 1).assign(&record.u);
-                    u_curr = record.u;
-
-                    if terminal {
+                let outcome = handle_step_events(&mut ctx, &step, &prob.events)?;
+                match outcome {
+                    StepOutcome::Continue(u_new) => {
+                        u.column_mut(i + 1).assign(&u_new);
+                        u_curr = u_new;
+                    }
+                    StepOutcome::NonTerminalEvent(record) => {
+                        events.push(record.clone());
+                        ts[i + 1] = record.t;
+                        u.column_mut(i + 1).assign(&record.u);
+                        u_curr = record.u;
+                    }
+                    StepOutcome::TerminalEvent(record) => {
+                        events.push(record.clone());
+                        ts[i + 1] = record.t;
+                        u.column_mut(i + 1).assign(&record.u);
                         final_step = i + 2;
                         break;
                     }
-                    continue;
                 }
-
-                u.column_mut(i + 1).assign(&u_new);
-                u_curr = u_new;
             }
         }
 
@@ -162,4 +144,85 @@ where
             events,
         })
     }
+}
+
+/// Build a uniform time grid from `t0` to `t1` with step size `dt`.
+///
+/// The last point is always exactly `t1`, so the final interval may be
+/// shorter than `dt`. Handles backward integration automatically when
+/// `t1 < t0`.
+fn generate_time_grid<T: Float + FromPrimitive>((t0, t1): (T, T), dt: T) -> Vec<T> {
+    let dir = if t1 >= t0 { dt } else { -dt };
+    let n = num_traits::cast::<T, usize>(((t1 - t0) / dir).floor()).unwrap_or(0);
+    let mut ts = Vec::with_capacity(n + 2);
+    ts.push(t0);
+    for i in 1..n {
+        ts.push(t0 + dir * T::from_usize(i).expect("step index fits in the numeric type"));
+    }
+    ts.push(t1);
+    ts
+}
+
+/// Per-step data needed for event detection.
+struct StepData<'a, T> {
+    /// Current state vector.
+    u_curr: &'a Array1<T>,
+    /// Weighted sum of stage derivatives.
+    du: &'a Array1<T>,
+    /// Actual step size for this interval.
+    dt: T,
+    /// Time at the beginning of the step.
+    t_prev: T,
+    /// Time at the end of the step (before event adjustment).
+    t_next: T,
+}
+
+/// Result of event detection for a single integration step.
+enum StepOutcome<T> {
+    /// No event fired; the candidate state is returned.
+    Continue(Array1<T>),
+    /// A non-terminal event was detected.
+    NonTerminalEvent(EventRecord<T>),
+    /// A terminal event was detected; integration should stop.
+    TerminalEvent(EventRecord<T>),
+}
+
+/// Advance one step, detect zero-crossing events, and return the outcome.
+///
+/// Computes the candidate next state `u_new = u_curr + dt * du`, then checks
+/// all registered event functions for sign changes. Returns a [`StepOutcome`]
+/// describing whether to continue, record a non-terminal event, or stop.
+fn handle_step_events<T, F>(
+    ctx: &mut StepperContext<T, F>,
+    step: &StepData<T>,
+    prob_events: &[Event<T>],
+) -> Result<StepOutcome<T>, SolverError>
+where
+    T: Float + FromPrimitive,
+    F: RhsODEFn<T>,
+{
+    let u_new = ndarray::Zip::from(step.u_curr)
+        .and(step.du)
+        .map_collect(|&uv, &duv| uv + step.dt * duv);
+
+    let prev_state = StepState {
+        t: step.t_prev,
+        u: step.u_curr,
+    };
+    let curr_state = StepState {
+        t: step.t_next,
+        u: &u_new,
+    };
+    let detected = detect_events(&prev_state, &curr_state, prob_events, ctx)?;
+
+    Ok(match detected.into_iter().next() {
+        Some(record) => {
+            if prob_events[record.event_index].terminal {
+                StepOutcome::TerminalEvent(record)
+            } else {
+                StepOutcome::NonTerminalEvent(record)
+            }
+        }
+        None => StepOutcome::Continue(u_new),
+    })
 }
