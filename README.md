@@ -34,6 +34,32 @@ for (t, u) in sol.t.iter().zip(sol.u.row(0).iter()) {
 }
 ```
 
+## Extensibility
+
+New method families (e.g. implicit Runge–Kutta, BDF) can be added by implementing the
+[`ODEMethod`](https://docs.rs/raznoor/latest/raznoor/trait.ODEMethod.html) trait:
+
+```rust
+use ndarray::{Array1, array};
+use raznoor::{FixedStepODESolver, ODEMethod, ODEProblem, RhsODEFn};
+
+struct MyCustomMethod;
+
+impl ODEMethod<f64> for MyCustomMethod {
+    type Scratch = ();
+    fn prepare(&self, _n_vars: usize) -> Self::Scratch { () }
+    fn step_with_scratch<F: RhsODEFn<f64>>(
+        &self, f: &F, t: f64, dt: f64, u: &Array1<f64>, _scratch: &mut Self::Scratch,
+    ) -> Array1<f64> {
+        let k = f(t, u);
+        ndarray::Zip::from(u).and(&k).map_collect(|&uv, &kv| uv + dt * kv)
+    }
+}
+
+let prob = ODEProblem::new(|t, u| array![-u[0]], array![1.0], (0.0, 1.0)).unwrap();
+let sol = FixedStepODESolver::new(MyCustomMethod, 0.01).unwrap().solve(&prob).unwrap();
+```
+
 ## Algorithms
 
 | Variant                   | Order | Description                     |
