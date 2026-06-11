@@ -162,6 +162,8 @@ pub enum SolverError {
     InvalidInitialCondition,
     /// An event function returned NaN or infinite value.
     EventError,
+    /// The Newton solver for implicit stages did not converge.
+    NewtonConvergenceError,
 }
 
 impl std::fmt::Display for SolverError {
@@ -178,6 +180,12 @@ impl std::fmt::Display for SolverError {
             }
             SolverError::EventError => {
                 write!(f, "event function returned invalid value")
+            }
+            SolverError::NewtonConvergenceError => {
+                write!(
+                    f,
+                    "Newton iteration did not converge for implicit RK stages"
+                )
             }
         }
     }
