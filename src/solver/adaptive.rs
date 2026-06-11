@@ -107,7 +107,6 @@ impl<T: Float> AdaptiveODESolver<T> {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 impl<T, F> ODESolver<T, F> for AdaptiveODESolver<T>
 where
     T: Float + FromPrimitive,
@@ -117,24 +116,20 @@ where
         if self.method.b == self.method.b_hat {
             return Err(SolverError::AdaptiveNotSupported);
         }
-        let b_diff: Vec<f64> = self
-            .method
-            .b
-            .iter()
-            .zip(self.method.b_hat.iter())
-            .map(|(&b, &bh)| b - bh)
-            .collect();
+        let b_diff = compute_b_diff(&self.method);
         let n = prob.u0.len();
         let t0 = prob.tspan.0;
         let tf = prob.tspan.1;
         let direction = if tf >= t0 { T::one() } else { -T::one() };
         let stages = self.method.c.len();
 
-        let safety = T::from_f64(SAFETY_FACTOR).unwrap();
-        let max_factor = T::from_f64(MAX_STEP_CHANGE).unwrap();
-        let min_factor = T::from_f64(MIN_STEP_CHANGE).unwrap();
+        let ctrl = StepControl {
+            safety: T::from_f64(SAFETY_FACTOR).unwrap(),
+            max_factor: T::from_f64(MAX_STEP_CHANGE).unwrap(),
+            min_factor: T::from_f64(MIN_STEP_CHANGE).unwrap(),
+            order_p1: T::from_usize(5).unwrap(),
+        };
         let max_steps = self.max_steps;
-        let order_p1 = T::from_usize(5).unwrap();
 
         let mut ts: Vec<T> = Vec::new();
         let mut us_data: Vec<T> = Vec::new();
@@ -176,27 +171,9 @@ where
                 .and(&du)
                 .map_collect(|&uv, &duv| uv + dt_adaptive * duv);
 
-            let mut err_sq = T::zero();
-            for i in 0..n {
-                let e_i = (dt_adaptive * delta[i]).abs();
-                let scale = self.atol + self.rtol * u_new[i].abs();
-                let ratio = e_i / scale;
-                err_sq = err_sq + ratio * ratio;
-            }
-            let err = (err_sq / T::from_usize(n).unwrap()).sqrt();
+            let err = compute_error_norm(n, self.atol, self.rtol, dt_adaptive, &delta, &u_new);
 
-            let fac = if err <= T::zero() {
-                max_factor
-            } else {
-                let sf = safety * (T::one() / (err + T::epsilon())).powf(T::one() / order_p1);
-                if sf > max_factor {
-                    max_factor
-                } else if sf < min_factor {
-                    min_factor
-                } else {
-                    sf
-                }
-            };
+            let fac = compute_step_factor(err, &ctrl);
 
             if err <= T::one() {
                 let t_new = t_prev + dt_adaptive;
@@ -242,5 +219,70 @@ where
             u: u_arr,
             events,
         })
+    }
+}
+
+/// Compute the coefficient difference `b - b_hat` for the embedded
+/// Runge-Kutta pair, used to estimate the local truncation error.
+fn compute_b_diff(method: &ExplicitRungeKuttaMethod<f64>) -> Vec<f64> {
+    method
+        .b
+        .iter()
+        .zip(method.b_hat.iter())
+        .map(|(&b, &bh)| b - bh)
+        .collect()
+}
+
+/// Compute the RMS (root-mean-square) error norm for the current step.
+///
+/// The error in each component is scaled by `atol + rtol * |u_new[i]|`
+/// (mixed absolute/relative tolerance), then the RMS across all `n`
+/// components is returned.
+fn compute_error_norm<T: Float + FromPrimitive>(
+    n: usize,
+    atol: T,
+    rtol: T,
+    dt: T,
+    delta: &Array1<T>,
+    u_new: &Array1<T>,
+) -> T {
+    let mut err_sq = T::zero();
+    for i in 0..n {
+        let e_i = (dt * delta[i]).abs();
+        let scale = atol + rtol * u_new[i].abs();
+        let ratio = e_i / scale;
+        err_sq = err_sq + ratio * ratio;
+    }
+    (err_sq / T::from_usize(n).unwrap()).sqrt()
+}
+
+/// Parameters for step-size control in the adaptive solver.
+///
+/// Bundles the safety factor, step-change bounds, and the error-exponent
+/// constant `p+1` (embedded method order + 1) that are always used
+/// together by [`compute_step_factor`].
+struct StepControl<T> {
+    safety: T,
+    max_factor: T,
+    min_factor: T,
+    order_p1: T,
+}
+
+/// Determine the step-size adjustment factor for the next integration step.
+///
+/// Based on the normalised error estimate `err` and the controller
+/// parameters in `ctrl`. Returns a clamped factor in
+/// `[min_factor, max_factor]`.
+fn compute_step_factor<T: Float + FromPrimitive>(err: T, ctrl: &StepControl<T>) -> T {
+    if err <= T::zero() {
+        return ctrl.max_factor;
+    }
+    let sf = ctrl.safety * (T::one() / (err + T::epsilon())).powf(T::one() / ctrl.order_p1);
+    if sf > ctrl.max_factor {
+        ctrl.max_factor
+    } else if sf < ctrl.min_factor {
+        ctrl.min_factor
+    } else {
+        sf
     }
 }
