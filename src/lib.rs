@@ -47,7 +47,7 @@
 pub mod types;
 
 /// Butcher tableaus for explicit Runge-Kutta methods.
-pub mod butcher;
+pub mod erk;
 
 /// Fixed-step and adaptive ODE solvers.
 mod solver;
@@ -56,7 +56,7 @@ mod solver;
 #[cfg(feature = "parallel")]
 pub mod batch;
 
-pub use butcher::{
+pub use erk::{
     DORMAND_PRINCE45, ExplicitRKScratch, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
     RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
 };

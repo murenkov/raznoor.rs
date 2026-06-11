@@ -9,7 +9,7 @@ use ndarray::Array1;
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
-use crate::butcher::ExplicitRungeKuttaMethod;
+use crate::erk::ExplicitRungeKuttaMethod;
 use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 /// A single-step ODE integration method.
