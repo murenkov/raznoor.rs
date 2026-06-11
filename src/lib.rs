@@ -57,10 +57,10 @@ mod solver;
 pub mod batch;
 
 pub use butcher::{
-    DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1, RUNGE_KUTTA_2,
-    RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
+    DORMAND_PRINCE45, ExplicitRKScratch, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
+    RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
 };
-pub use solver::{AdaptiveODESolver, EnsembleODESolver, FixedStepODESolver, ODESolver};
+pub use solver::{AdaptiveODESolver, EnsembleODESolver, FixedStepODESolver, ODEMethod, ODESolver};
 pub use types::{
     EnsembleODEProblem, Event, EventDirection, EventRecord, ODEProblem, ODESolution, RhsODEFn,
     SolverError,
