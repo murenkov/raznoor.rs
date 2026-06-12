@@ -206,8 +206,7 @@ fn solve_event_function_nan() {
 #[test]
 fn solve_adaptive_empty_events() {
     let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-    let mut prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
-    prob.events = vec![];
+    let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
     let sol = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6)
         .unwrap()
         .solve(&prob)
