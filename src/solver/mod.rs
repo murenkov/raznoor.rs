@@ -88,6 +88,14 @@ pub trait ODEMethod<T: Float>: Sized {
     fn supports_adaptive(&self) -> bool {
         false
     }
+
+    /// The (lower) order `p` of this method.
+    ///
+    /// For embedded pairs used in adaptive stepping this is the *lower* order
+    /// (e.g. `4` for a 4(5) pair) so that the step-size controller can use
+    /// `p + 1` as the error exponent. For fixed-order methods it is simply the
+    /// order of the scheme.
+    fn order(&self) -> usize;
 }
 
 /// Default fixed-step solver backed by an explicit Runge–Kutta method.

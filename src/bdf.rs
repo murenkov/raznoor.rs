@@ -202,6 +202,10 @@ impl<T: Float> BDFScratch<T> {
 impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
     type Scratch = BDFScratch<T>;
 
+    fn order(&self) -> usize {
+        self.order
+    }
+
     fn prepare(&self, n_vars: usize) -> Self::Scratch {
         let order = self.order.clamp(1, BDF_MAX_ORDER);
         BDFScratch {

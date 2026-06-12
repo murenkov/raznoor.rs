@@ -47,14 +47,19 @@ pub struct AdaptiveODESolver<M, T> {
     max_steps: usize,
 }
 
-impl<M, T: Float> AdaptiveODESolver<M, T> {
+impl<M: ODEMethod<T>, T: Float> AdaptiveODESolver<M, T> {
     /// Create a new adaptive solver configuration.
     ///
     /// # Errors
     /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero or negative.
+    /// Returns `Err(SolverError::AdaptiveNotSupported)` if `method` does not
+    /// support adaptive error estimation.
     pub fn new(method: M, dt: T, atol: T, rtol: T) -> Result<Self, SolverError> {
         if dt <= T::zero() {
             return Err(SolverError::InvalidStepSize);
+        }
+        if !method.supports_adaptive() {
+            return Err(SolverError::AdaptiveNotSupported);
         }
         Ok(Self {
             method,
@@ -125,7 +130,7 @@ where
             safety: T::from_f64(SAFETY_FACTOR).unwrap(),
             max_factor: T::from_f64(MAX_STEP_CHANGE).unwrap(),
             min_factor: T::from_f64(MIN_STEP_CHANGE).unwrap(),
-            order_p1: T::from_usize(5).unwrap(),
+            order_p1: T::from_usize(self.method.order() + 1).unwrap(),
         };
         let max_steps = self.max_steps;
 
