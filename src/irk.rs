@@ -192,13 +192,6 @@ pub const RADAU_IIA_5: ImplicitRungeKuttaMethod<f64> = ImplicitRungeKuttaMethod 
     ],
 };
 
-/// Alias for [`BACKWARD_EULER`].
-pub const BEULER: ImplicitRungeKuttaMethod<f64> = BACKWARD_EULER;
-/// Alias for [`IMPLICIT_MIDPOINT`].
-pub const MIDPOINT_IMP: ImplicitRungeKuttaMethod<f64> = IMPLICIT_MIDPOINT;
-/// Alias for [`CRANK_NICOLSON`].
-pub const TRAPEZOIDAL: ImplicitRungeKuttaMethod<f64> = CRANK_NICOLSON;
-
 /// Pre-allocated scratch buffers for an implicit Runge–Kutta step.
 ///
 /// Created once by [`ImplicitRungeKuttaMethod::prepare`] and reused on every

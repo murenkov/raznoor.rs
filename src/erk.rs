@@ -158,15 +158,6 @@ pub const RUNGE_KUTTA_5: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMetho
     c: &[0.0, 1.0 / 4.0, 1.0 / 4.0, 1.0 / 2.0, 3.0 / 4.0, 1.0],
 };
 
-/// Alias for [`RUNGE_KUTTA_1`].
-pub const EULER: ExplicitRungeKuttaMethod<f64> = RUNGE_KUTTA_1;
-/// Alias for [`RUNGE_KUTTA_2`].
-pub const MIDPOINT: ExplicitRungeKuttaMethod<f64> = RUNGE_KUTTA_2;
-/// Alias for [`RUNGE_KUTTA_3`].
-pub const KUTTA3: ExplicitRungeKuttaMethod<f64> = RUNGE_KUTTA_3;
-/// Alias for [`RUNGE_KUTTA_5`].
-pub const BUTCHER5: ExplicitRungeKuttaMethod<f64> = RUNGE_KUTTA_5;
-
 #[rustfmt::skip]
 const FEHLBERG45_A: &[&[f64]] = &[
     &[            0.0,              0.0,              0.0,             0.0,          0.0, 0.0],
