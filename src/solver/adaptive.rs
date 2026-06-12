@@ -51,9 +51,9 @@ impl<M, T: Float> AdaptiveODESolver<M, T> {
     /// Create a new adaptive solver configuration.
     ///
     /// # Errors
-    /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero.
+    /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero or negative.
     pub fn new(method: M, dt: T, atol: T, rtol: T) -> Result<Self, SolverError> {
-        if dt == T::zero() {
+        if dt <= T::zero() {
             return Err(SolverError::InvalidStepSize);
         }
         Ok(Self {
@@ -134,7 +134,7 @@ where
 
         let mut t = t0;
         let mut u_curr = prob.u0.clone();
-        let mut dt_adaptive = self.dt.abs() * direction;
+        let mut dt_adaptive = self.dt * direction;
         let mut events: Vec<EventRecord<T>> = Vec::new();
 
         ts.push(t);
