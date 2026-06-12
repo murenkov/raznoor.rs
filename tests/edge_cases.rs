@@ -1,10 +1,12 @@
 #![allow(missing_docs)]
 
+use std::sync::Arc;
+
 use ndarray::Array1;
 use ndarray::array;
 use raznoor::{
-    AdaptiveODESolver, DORMAND_PRINCE45, FixedStepODESolver, ODEProblem, ODESolver, RUNGE_KUTTA_4,
-    SolverError,
+    AdaptiveODESolver, DORMAND_PRINCE45, Event, EventDirection, FixedStepODESolver, ODEProblem,
+    ODESolver, RUNGE_KUTTA_4, SolverError,
 };
 
 #[test]
@@ -158,4 +160,58 @@ fn solve_adaptive_tight_tolerances() {
     let sol = result.unwrap();
     assert_eq!(sol.u.nrows(), 1);
     assert!(sol.t.len() > 1, "should produce at least 2 time points");
+}
+
+#[test]
+fn solve_adaptive_max_steps_exceeded() {
+    let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
+    let prob = ODEProblem::new(f, array![1.0], (0.0, 1e20)).unwrap();
+    let result = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6)
+        .unwrap()
+        .with_max_steps(10)
+        .solve(&prob);
+    assert!(
+        result.is_ok(),
+        "adaptive solver should return partial solution after max_steps"
+    );
+    let sol = result.unwrap();
+    assert!(
+        sol.t.len() <= 11,
+        "at most max_steps+1 time points, got {}",
+        sol.t.len()
+    );
+    assert!(
+        sol.t.len() >= 2,
+        "should produce at least initial point + one step"
+    );
+}
+
+#[test]
+fn solve_event_function_nan() {
+    let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
+    let event_fn = Arc::new(|_t: f64, _u: &Array1<f64>| f64::NAN);
+    let event = Event::new(event_fn, true, EventDirection::Any);
+    let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+        .unwrap()
+        .with_events(vec![event]);
+    let result = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6)
+        .unwrap()
+        .solve(&prob);
+    assert!(
+        matches!(result, Err(SolverError::EventError)),
+        "event function returning NaN should produce EventError"
+    );
+}
+
+#[test]
+fn solve_adaptive_empty_events() {
+    let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
+    let mut prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
+    prob.events = vec![];
+    let sol = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    assert!(sol.t.len() >= 2, "should produce at least 2 time points");
+    assert!(sol.events.is_empty(), "no events should be recorded");
 }
