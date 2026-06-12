@@ -46,6 +46,8 @@ pub struct ImplicitRungeKuttaMethod<T: 'static> {
     pub b: &'static [T],
     /// Node positions.
     pub c: &'static [T],
+    /// The order `p` of this method.
+    pub order: usize,
 }
 
 /// Backward Euler method (first-order, L-stable, A-stable).
@@ -64,6 +66,7 @@ pub const BACKWARD_EULER: ImplicitRungeKuttaMethod<f64> = ImplicitRungeKuttaMeth
     a: &[&[1.0_f64]],
     b: &[1.0_f64],
     c: &[1.0_f64],
+    order: 1,
 };
 
 /// Implicit midpoint method (second-order, A-stable, symplectic).
@@ -81,6 +84,7 @@ pub const IMPLICIT_MIDPOINT: ImplicitRungeKuttaMethod<f64> = ImplicitRungeKuttaM
     a: &[&[0.5_f64]],
     b: &[1.0_f64],
     c: &[0.5_f64],
+    order: 2,
 };
 
 #[rustfmt::skip]
@@ -105,6 +109,7 @@ pub const CRANK_NICOLSON: ImplicitRungeKuttaMethod<f64> = ImplicitRungeKuttaMeth
     a: CN_A,
     b: &[0.5_f64, 0.5_f64],
     c: &[0.0_f64, 1.0_f64],
+    order: 2,
 };
 
 #[rustfmt::skip]
@@ -131,6 +136,7 @@ pub const GAUSS_LEGENDRE_4: ImplicitRungeKuttaMethod<f64> = ImplicitRungeKuttaMe
     b: &[0.5_f64, 0.5_f64],
     #[allow(clippy::unreadable_literal)]
     c: &[0.211_324_865_405_187_13_f64, 0.788_675_134_594_812_9_f64],
+    order: 4,
 };
 
 #[rustfmt::skip]
@@ -155,6 +161,7 @@ pub const RADAU_IIA_3: ImplicitRungeKuttaMethod<f64> = ImplicitRungeKuttaMethod 
     a: RADAU_IIA_3_A,
     b: &[0.75_f64, 0.25_f64],
     c: &[1.0_f64 / 3.0_f64, 1.0_f64],
+    order: 3,
 };
 
 #[rustfmt::skip]
@@ -190,6 +197,7 @@ pub const RADAU_IIA_5: ImplicitRungeKuttaMethod<f64> = ImplicitRungeKuttaMethod 
         0.644_948_974_278_317_8_f64,
         1.0_f64,
     ],
+    order: 5,
 };
 
 /// Pre-allocated scratch buffers for an implicit Runge–Kutta step.
@@ -216,6 +224,10 @@ const NEWTON_MAX_ITER: usize = 15;
 
 impl<T: Float + FromPrimitive> ODEMethod<T> for ImplicitRungeKuttaMethod<f64> {
     type Scratch = ImplicitRKScratch<T>;
+
+    fn order(&self) -> usize {
+        self.order
+    }
 
     fn prepare(&self, n_vars: usize) -> Self::Scratch {
         let num_stages = self.c.len();

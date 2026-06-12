@@ -15,6 +15,8 @@ pub struct ExplicitRungeKuttaMethod<T: 'static> {
     pub b_hat: &'static [T],
     /// Node positions.
     pub c: &'static [T],
+    /// The (lower) order `p` of this method.
+    pub order: usize,
 }
 
 #[rustfmt::skip]
@@ -39,6 +41,7 @@ pub const RUNGE_KUTTA_1: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMetho
     b: &[1.0],
     b_hat: &[1.0],
     c: &[0.0],
+    order: 1,
 };
 
 #[rustfmt::skip]
@@ -63,6 +66,7 @@ pub const RUNGE_KUTTA_2: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMetho
     b: &[0.5, 0.5],
     b_hat: &[0.5, 0.5],
     c: &[0.0, 1.0],
+    order: 2,
 };
 
 #[rustfmt::skip]
@@ -88,6 +92,7 @@ pub const RUNGE_KUTTA_3: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMetho
     b: &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
     b_hat: &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
     c: &[0.0, 0.5, 1.0],
+    order: 3,
 };
 
 #[rustfmt::skip]
@@ -114,6 +119,7 @@ pub const RUNGE_KUTTA_4: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMetho
     b: &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
     b_hat: &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
     c: &[0.0, 0.5, 0.5, 1.0],
+    order: 4,
 };
 
 #[rustfmt::skip]
@@ -156,6 +162,7 @@ pub const RUNGE_KUTTA_5: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMetho
         7.0 / 90.0,
     ],
     c: &[0.0, 1.0 / 4.0, 1.0 / 4.0, 1.0 / 2.0, 3.0 / 4.0, 1.0],
+    order: 5,
 };
 
 #[rustfmt::skip]
@@ -199,6 +206,7 @@ pub const FEHLBERG45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
         0.0,
     ],
     c: &[0.0, 1.0 / 4.0, 3.0 / 8.0, 12.0 / 13.0, 1.0, 1.0 / 2.0],
+    order: 4,
 };
 
 #[rustfmt::skip]
@@ -245,6 +253,7 @@ pub const DORMAND_PRINCE45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMe
         1.0 / 40.0,
     ],
     c: &[0.0, 1.0 / 5.0, 3.0 / 10.0, 4.0 / 5.0, 8.0 / 9.0, 1.0, 1.0],
+    order: 4,
 };
 
 use ndarray::Array1;
@@ -316,6 +325,10 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
 
     fn supports_adaptive(&self) -> bool {
         self.b != self.b_hat
+    }
+
+    fn order(&self) -> usize {
+        self.order
     }
 }
 
