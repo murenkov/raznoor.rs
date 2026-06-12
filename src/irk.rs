@@ -362,7 +362,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ImplicitRungeKuttaMethod<f64> {
 /// Uses second-order central differences with step `h = 1e-6`.
 /// The result is stored in `jac` (overwritten).
 #[allow(clippy::many_single_char_names)]
-fn compute_jacobian<T, F>(jac: &mut Array2<T>, f: &F, t: T, u: &Array1<T>)
+pub(crate) fn compute_jacobian<T, F>(jac: &mut Array2<T>, f: &F, t: T, u: &Array1<T>)
 where
     T: Float + FromPrimitive,
     F: RhsODEFn<T>,
@@ -473,13 +473,13 @@ where
     max_res
 }
 
-/// LU factorisation with partial pivoting (in-place, PA = LU).
+/// LU factorization with partial pivoting (in-place, PA = LU).
 ///
 /// On return, `a` contains the LU factors (L in the strict lower triangle,
-/// U in the upper triangle including the diagonal).  `piv` receives the
+/// U in the upper triangle including the diagonal). `piv` receives the
 /// row permutation: `piv[k]` is the index of the row that was swapped
 /// with row `k` at step `k`.
-fn lu_factor<T: Float>(a: &mut Array2<T>, piv: &mut [usize]) {
+pub(crate) fn lu_factor<T: Float>(a: &mut Array2<T>, piv: &mut [usize]) {
     let n = a.nrows();
     for k in 0..n {
         // Find pivot (largest element in column k, rows k..n-1)
@@ -522,7 +522,7 @@ fn lu_factor<T: Float>(a: &mut Array2<T>, piv: &mut [usize]) {
 ///
 /// `lu` is the in-place factorised matrix, `piv` is the permutation from
 /// `lu_factor`.  `b` is modified in-place to contain the solution `x`.
-fn lu_solve<T: Float>(lu: &Array2<T>, piv: &[usize], b: &mut Array1<T>) {
+pub(crate) fn lu_solve<T: Float>(lu: &Array2<T>, piv: &[usize], b: &mut Array1<T>) {
     let n = lu.nrows();
 
     // Apply row permutations

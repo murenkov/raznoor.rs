@@ -52,6 +52,9 @@ pub mod erk;
 /// Butcher tableaus and Newton-based solver for implicit Runge-Kutta methods.
 pub mod irk;
 
+/// Backward Differentiation Formula (BDF) methods for stiff ODEs.
+pub mod bdf;
+
 /// Fixed-step and adaptive ODE solvers.
 mod solver;
 
@@ -59,6 +62,7 @@ mod solver;
 #[cfg(feature = "parallel")]
 pub mod batch;
 
+pub use bdf::{BDF1, BDF2, BDF3, BDF4, BDF5, BDF6, BDFMethod, BDFScratch};
 pub use erk::{
     DORMAND_PRINCE45, ExplicitRKScratch, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
     RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
