@@ -5,8 +5,8 @@
 //! equivalent to backward Euler.
 //!
 //! At each step a nonlinear system is solved via simplified Newton
-//! iteration with a finite-difference Jacobian, reusing the same
-//! linear algebra infrastructure as the implicit Runge–Kutta module.
+//! iteration with a finite-difference Jacobian, using the shared
+//! linear algebra infrastructure in [`crate::linalg`].
 //!
 //! # Startup
 //!
@@ -33,7 +33,7 @@ use ndarray::Array2;
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
-use crate::irk;
+use crate::linalg;
 use crate::solver::ODEMethod;
 use crate::types::RhsODEFn;
 
@@ -254,7 +254,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
         }
 
         // --- 2. Compute Jacobian J = ∂f/∂u at (t, u) ---
-        irk::compute_jacobian(&mut scratch.jac, f, t, u);
+        linalg::compute_jacobian(&mut scratch.jac, f, t, u);
 
         // --- 3. Build Newton system matrix M = I − h·β·J ---
         let hbeta = dt * T::from_f64(beta).unwrap();
@@ -267,7 +267,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
         }
 
         // --- 4. LU factorize M ---
-        irk::lu_factor(&mut scratch.system, &mut scratch.pivot);
+        linalg::lu_factor(&mut scratch.system, &mut scratch.pivot);
 
         // --- 5. Newton iteration ---
         // Initial guess: u_new = u (the state from the previous step).
@@ -297,7 +297,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
             for entry in &mut scratch.work {
                 *entry = -(*entry);
             }
-            irk::lu_solve(&scratch.system, &scratch.pivot, &mut scratch.work);
+            linalg::lu_solve(&scratch.system, &scratch.pivot, &mut scratch.work);
 
             // Update u_new += Δ
             for i in 0..n_vars {

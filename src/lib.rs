@@ -55,6 +55,9 @@ pub mod irk;
 /// Backward Differentiation Formula (BDF) methods for stiff ODEs.
 pub mod bdf;
 
+/// Shared linear algebra utilities (LU factorisation, Jacobian).
+pub(crate) mod linalg;
+
 /// Fixed-step and adaptive ODE solvers.
 mod solver;
 
