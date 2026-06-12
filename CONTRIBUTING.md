@@ -12,7 +12,7 @@
 
 - Keep commits focused on a single concern.
 - Use git branches with meaningful names (e.g. `fix/`, `feat/`, `docs/` prefix).
-- Before committing, run `cargo fmt`, `cargo clippy`, and `cargo test`.
+- Before committing, run `cargo fmt --check`, `cargo clippy --all-targets`, `cargo test`, and `cargo doc --no-deps`.
 - Write commit messages using the [conventional commits](https://www.conventionalcommits.org/) convention.
 - Use both a short description line and a detailed commit message body.
 - Update or add tests to cover any new or changed functionality.
@@ -23,8 +23,8 @@
 This project uses **rustfmt** for code formatting and **clippy** for linting.
 Both can be run directly:
 
-- `cargo fmt`
-- `cargo clippy`
+- `cargo fmt --check`
+- `cargo clippy --all-targets`
 
 ## Testing
 
@@ -33,7 +33,12 @@ Run the test suite with:
 - `cargo test`
 - `cargo bench`
 
-All tests must pass before a pull request is merged.
+Additional checks in CI:
+
+- `cargo doc --no-deps`
+- `cargo deny check`
+
+All tests and checks must pass before a pull request is merged.
 
 Benchmark results are automatically tracked across commits via the `Benchmarks` GitHub Actions workflow. A dashboard with historical performance charts is available on the repository's GitHub Pages site (enable Pages in repo settings, source: `gh-pages` branch).
 

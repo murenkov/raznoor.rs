@@ -19,7 +19,12 @@ repos:
         pass_filenames: false
       - id: cargo-clippy
         name: cargo clippy
-        entry: cargo clippy --
+        entry: cargo clippy --all-targets --
+        language: system
+        pass_filenames: false
+      - id: cargo-doc
+        name: cargo doc
+        entry: cargo doc --no-deps
         language: system
         pass_filenames: false
       - id: cargo-test
