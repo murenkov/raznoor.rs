@@ -10,31 +10,19 @@ use raznoor::{
 mod common;
 use common::{linear_problem, oscillator_problem, residual};
 
-fn exp_decay_problem() -> (
-    ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>>,
-    f64,
-) {
-    let prob = ODEProblem::new(
-        |_t: f64, u: &Array1<f64>| array![-u[0]],
-        array![1.0],
-        (0.0, 1.0),
-    )
-    .unwrap();
+type Problem = ODEProblem<f64, fn(f64, &Array1<f64>) -> Array1<f64>>;
+
+fn exp_decay_problem() -> (Problem, f64) {
+    let f: fn(f64, &Array1<f64>) -> Array1<f64> = |_t, u| array![-u[0]];
+    let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
     let u_exact = (-1.0_f64).exp();
     (prob, u_exact)
 }
 
 /// Stiff linear problem: u' = -1000*u, u(0) = 1, exact u(1) = exp(-1000) ≈ 0
-fn stiff_problem() -> (
-    ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>>,
-    f64,
-) {
-    let prob = ODEProblem::new(
-        |_t: f64, u: &Array1<f64>| array![-1000.0 * u[0]],
-        array![1.0],
-        (0.0, 1.0),
-    )
-    .unwrap();
+fn stiff_problem() -> (Problem, f64) {
+    let f: fn(f64, &Array1<f64>) -> Array1<f64> = |_t, u| array![-1000.0 * u[0]];
+    let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
     let u_exact = (-1000.0_f64).exp();
     (prob, u_exact)
 }
@@ -159,8 +147,7 @@ fn radau_ii_5_stiff_f64() {
     // The exact solution is essentially 0 at t=1 with dt=0.1
     assert!(
         (u_last - 0.0_f64).abs() < 0.05,
-        "Radau5 stiff: |u_last| = {} >= 0.05",
-        u_last
+        "Radau5 stiff: |u_last| = {u_last} >= 0.05"
     );
 }
 
