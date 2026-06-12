@@ -327,6 +327,76 @@ fn bdf1_exp_decay_f32() {
     assert!((u_last - u_exact).abs() < 0.01, "BDF1 f32: error too large");
 }
 
+#[test]
+fn bdf2_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(BDF2, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
+
+#[test]
+fn bdf3_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(BDF3, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
+
+#[test]
+fn bdf4_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(BDF4, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
+
+#[test]
+fn bdf5_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(BDF5, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
+
+#[test]
+fn bdf6_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(BDF6, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
+
 // --- BDF1 == Backward Euler consistency ---
 
 #[test]
