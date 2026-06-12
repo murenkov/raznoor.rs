@@ -273,6 +273,8 @@ pub struct ExplicitRKScratch<T> {
     pub(crate) ks: Vec<Array1<T>>,
     /// Temporary argument buffer used when computing each stage.
     pub(crate) arg: Array1<T>,
+    /// Buffered weighted combination `∑ b[i]·ks[i]`.
+    du: Array1<T>,
 }
 
 impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
@@ -282,6 +284,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
         ExplicitRKScratch {
             ks: vec![Array1::zeros(n_vars); self.c.len()],
             arg: Array1::zeros(n_vars),
+            du: Array1::zeros(n_vars),
         }
     }
 
@@ -294,10 +297,13 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
         scratch: &mut Self::Scratch,
     ) -> Array1<T> {
         compute_stages(f, t, dt, u, self, scratch);
-        let du = weighted_sum(&scratch.ks, self.b);
-        ndarray::Zip::from(u)
-            .and(&du)
-            .map_collect(|&uv, &duv| uv + dt * duv)
+        weighted_sum_into(&scratch.ks, self.b, &mut scratch.du);
+        let mut out = Array1::zeros(u.len());
+        ndarray::Zip::from(&mut out)
+            .and(u)
+            .and(&scratch.du)
+            .for_each(|r, &uv, &duv| *r = uv + dt * duv);
+        out
     }
 
     fn step_with_error_with_scratch<F: RhsODEFn<T>>(
@@ -309,7 +315,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
         scratch: &mut Self::Scratch,
     ) -> (Array1<T>, Array1<T>) {
         compute_stages(f, t, dt, u, self, scratch);
-        let du = weighted_sum(&scratch.ks, self.b);
+        weighted_sum_into(&scratch.ks, self.b, &mut scratch.du);
         let b_diff: Vec<f64> = self
             .b
             .iter()
@@ -317,9 +323,11 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
             .map(|(&b, &bh)| b - bh)
             .collect();
         let delta = weighted_sum(&scratch.ks, &b_diff);
-        let u_new = ndarray::Zip::from(u)
-            .and(&du)
-            .map_collect(|&uv, &duv| uv + dt * duv);
+        let mut u_new = Array1::zeros(u.len());
+        ndarray::Zip::from(&mut u_new)
+            .and(u)
+            .and(&scratch.du)
+            .for_each(|r, &uv, &duv| *r = uv + dt * duv);
         (u_new, delta)
     }
 
@@ -355,6 +363,23 @@ fn compute_stages<T, F>(
             }
         }
         scratch.ks[m] = f(t + T::from_f64(method.c[m]).unwrap() * dt, &scratch.arg);
+    }
+}
+
+/// Write the weighted sum `∑ weights[m] · ks[m]` into `out`.
+fn weighted_sum_into<T: Float + FromPrimitive>(
+    ks: &[Array1<T>],
+    weights: &[f64],
+    out: &mut Array1<T>,
+) {
+    out.fill(T::zero());
+    for (m, k) in ks.iter().enumerate() {
+        let coeff = T::from_f64(weights[m]).unwrap();
+        if coeff != T::zero() {
+            ndarray::Zip::from(&mut *out)
+                .and(k)
+                .for_each(|s, &kv| *s = *s + coeff * kv);
+        }
     }
 }
 
