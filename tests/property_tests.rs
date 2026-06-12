@@ -17,7 +17,7 @@ proptest! {
         let f = |_t: f64, u: &Array1<f64>| -u.clone();
         let prob = ODEProblem::new(f, u0, (0.0, 1.0)).unwrap();
         let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, dt).unwrap().solve(&prob).unwrap();
-        prop_assert_eq!(sol.u.nrows(), n_vars, "number of solution variables should match");
+        prop_assert_eq!(sol.u.ncols(), n_vars, "number of solution variables should match");
         prop_assert!((sol.t[0] - prob.tspan.0).abs() < f64::EPSILON, "first time point should be t0");
         prop_assert!((sol.t[sol.t.len() - 1] - prob.tspan.1).abs() < f64::EPSILON, "last time point should be tf");
     }
@@ -45,7 +45,7 @@ proptest! {
         let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
         let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
         let sol = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, atol, rtol).unwrap().solve(&prob).unwrap();
-        prop_assert_eq!(sol.u.nrows(), 1, "should have 1 variable");
+        prop_assert_eq!(sol.u.ncols(), 1, "should have 1 variable");
         prop_assert!(sol.t.len() > 1, "should produce at least 2 time points");
         prop_assert!((sol.t[0] - prob.tspan.0).abs() < f64::EPSILON, "first time point should be t0");
         prop_assert!((sol.t[sol.t.len() - 1] - prob.tspan.1).abs() < f64::EPSILON, "last time point should be tf");

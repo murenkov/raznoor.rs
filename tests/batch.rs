@@ -112,7 +112,7 @@ proptest! {
         for result in &results {
             prop_assert!(result.is_ok());
             let sol = result.as_ref().unwrap();
-            prop_assert_eq!(sol.u.nrows(), n_vars);
+            prop_assert_eq!(sol.u.ncols(), n_vars);
         }
     }
 }

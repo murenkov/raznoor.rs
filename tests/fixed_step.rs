@@ -16,7 +16,7 @@ fn solve_erk1_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -30,7 +30,7 @@ fn solve_erk2_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -44,7 +44,7 @@ fn solve_erk3_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -58,7 +58,7 @@ fn solve_erk4_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -72,7 +72,7 @@ fn solve_erk5_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -86,7 +86,7 @@ fn solve_fehlberg45_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -100,7 +100,7 @@ fn solve_dopri54_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -114,7 +114,7 @@ fn solve_erk1_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -128,7 +128,7 @@ fn solve_erk2_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -142,7 +142,7 @@ fn solve_erk3_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -156,7 +156,7 @@ fn solve_erk4_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -170,7 +170,7 @@ fn solve_erk5_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -184,7 +184,7 @@ fn solve_fehlberg45_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -198,7 +198,7 @@ fn solve_dopri54_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -212,7 +212,7 @@ fn solve_system_two_vars_erk1() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -226,7 +226,7 @@ fn solve_system_two_vars_erk2() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -240,7 +240,7 @@ fn solve_system_two_vars_erk3() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -254,7 +254,7 @@ fn solve_system_two_vars_erk4() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -268,7 +268,7 @@ fn solve_system_two_vars_erk5() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -282,7 +282,7 @@ fn solve_system_two_vars_fehlberg45() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -296,7 +296,7 @@ fn solve_system_two_vars_dopri54() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }

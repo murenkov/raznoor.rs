@@ -33,7 +33,7 @@ let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
 let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
 
 let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap().solve(&prob).unwrap();
-for (t, u) in sol.t.iter().zip(sol.u.row(0).iter()) {
+for (t, u) in sol.t.iter().zip(sol.u.column(0).iter()) {
     println!("t = {t:.2}, u = {u:.6}");
 }
 ```

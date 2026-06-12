@@ -17,7 +17,7 @@ fn solve_adaptive_fehlberg45_f32() {
         .unwrap();
     let n_t = sol.t.len();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed_last = sol.u.row(i)[n_t - 1];
+        let computed_last = sol.u.column(i)[n_t - 1];
         let ref_last = ref_traj[ref_traj.len() - 1];
         assert!(
             (computed_last - ref_last).abs() <= 0.01,
@@ -35,7 +35,7 @@ fn solve_adaptive_dopri54_f32() {
         .unwrap();
     let n_t = sol.t.len();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed_last = sol.u.row(i)[n_t - 1];
+        let computed_last = sol.u.column(i)[n_t - 1];
         let ref_last = ref_traj[ref_traj.len() - 1];
         assert!(
             (computed_last - ref_last).abs() <= 0.01,
@@ -53,7 +53,7 @@ fn solve_adaptive_fehlberg45_f64() {
         .unwrap();
     let n_t = sol.t.len();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed_last = sol.u.row(i)[n_t - 1];
+        let computed_last = sol.u.column(i)[n_t - 1];
         let ref_last = ref_traj[ref_traj.len() - 1];
         assert!(
             (computed_last - ref_last).abs() <= 0.01,
@@ -71,7 +71,7 @@ fn solve_adaptive_dopri54_f64() {
         .unwrap();
     let n_t = sol.t.len();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed_last = sol.u.row(i)[n_t - 1];
+        let computed_last = sol.u.column(i)[n_t - 1];
         let ref_last = ref_traj[ref_traj.len() - 1];
         assert!(
             (computed_last - ref_last).abs() <= 0.01,
@@ -89,7 +89,7 @@ fn solve_adaptive_fehlberg45_osc() {
         .unwrap();
     let n_t = sol.t.len();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed_last = sol.u.row(i)[n_t - 1];
+        let computed_last = sol.u.column(i)[n_t - 1];
         let ref_last = ref_traj[ref_traj.len() - 1];
         assert!(
             (computed_last - ref_last).abs() <= 0.01,
@@ -107,7 +107,7 @@ fn solve_adaptive_dopri54_osc() {
         .unwrap();
     let n_t = sol.t.len();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed_last = sol.u.row(i)[n_t - 1];
+        let computed_last = sol.u.column(i)[n_t - 1];
         let ref_last = ref_traj[ref_traj.len() - 1];
         assert!(
             (computed_last - ref_last).abs() <= 0.01,
