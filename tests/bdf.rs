@@ -7,48 +7,29 @@ use raznoor::{BDF1, BDF2, BDF3, BDF4, BDF5, BDF6, FixedStepODESolver, ODEProblem
 mod common;
 use common::{linear_problem, oscillator_problem, residual};
 
-fn exp_decay_problem() -> (
-    ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>>,
-    f64,
-) {
-    let prob = ODEProblem::new(
-        |_t: f64, u: &Array1<f64>| array![-u[0]],
-        array![1.0],
-        (0.0, 1.0),
-    )
-    .unwrap();
+type Problem = ODEProblem<f64, fn(f64, &Array1<f64>) -> Array1<f64>>;
+
+fn exp_decay_problem() -> (Problem, f64) {
+    let f: fn(f64, &Array1<f64>) -> Array1<f64> = |_t, u| array![-u[0]];
+    let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
     let u_exact = (-1.0_f64).exp();
     (prob, u_exact)
 }
 
 /// Stiff linear problem: u' = -1000*u, u(0) = 1, exact u(1) ≈ 0
-fn stiff_problem() -> (
-    ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>>,
-    f64,
-) {
-    let prob = ODEProblem::new(
-        |_t: f64, u: &Array1<f64>| array![-1000.0 * u[0]],
-        array![1.0],
-        (0.0, 1.0),
-    )
-    .unwrap();
+fn stiff_problem() -> (Problem, f64) {
+    let f: fn(f64, &Array1<f64>) -> Array1<f64> = |_t, u| array![-1000.0 * u[0]];
+    let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
     let u_exact = (-1000.0_f64).exp();
     (prob, u_exact)
 }
 
-fn exp_decay_sin_problem() -> (
-    ODEProblem<f64, impl Fn(f64, &Array1<f64>) -> Array1<f64>>,
-    f64,
-) {
+fn exp_decay_sin_problem() -> (Problem, f64) {
     // u' = -u + sin(t), u(0) = 0
     // exact: u(t) = (sin(t) - cos(t) + e^{-t}) / 2
-    let prob = ODEProblem::new(
-        |t: f64, u: &Array1<f64>| array![-u[0] + t.sin()],
-        array![0.0],
-        (0.0, 2.0),
-    )
-    .unwrap();
-    let u_exact = (2.0_f64.sin() - (2.0_f64).cos() + (-2.0_f64).exp()) / 2.0;
+    let f: fn(f64, &Array1<f64>) -> Array1<f64> = |t, u| array![-u[0] + t.sin()];
+    let prob = ODEProblem::new(f, array![0.0], (0.0, 2.0)).unwrap();
+    let u_exact = (2.0_f64.sin() - (2.0_f64).cos()).midpoint((-2.0_f64).exp());
     (prob, u_exact)
 }
 
@@ -227,8 +208,7 @@ fn bdf2_stiff_f64() {
     let u_last = sol.u[[0, sol.t.len() - 1]];
     assert!(
         (u_last - 0.0_f64).abs() < 0.05,
-        "BDF2 stiff: |u_last| = {} >= 0.05",
-        u_last
+        "BDF2 stiff: |u_last| = {u_last} >= 0.05"
     );
 }
 
@@ -243,8 +223,7 @@ fn bdf3_stiff_f64() {
     let u_last = sol.u[[0, sol.t.len() - 1]];
     assert!(
         (u_last - 0.0_f64).abs() < 0.05,
-        "BDF3 stiff: |u_last| = {} >= 0.05",
-        u_last
+        "BDF3 stiff: |u_last| = {u_last} >= 0.05"
     );
 }
 
@@ -259,8 +238,7 @@ fn bdf4_stiff_f64() {
     let u_last = sol.u[[0, sol.t.len() - 1]];
     assert!(
         (u_last - 0.0_f64).abs() < 0.05,
-        "BDF4 stiff: |u_last| = {} >= 0.05",
-        u_last
+        "BDF4 stiff: |u_last| = {u_last} >= 0.05"
     );
 }
 
