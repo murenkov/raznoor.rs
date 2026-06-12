@@ -20,7 +20,7 @@ const MAX_STEPS: usize = 10_000_000;
 ///
 /// # Type parameters
 ///
-/// * `M` — The integration method type (e.g. [`ExplicitRungeKuttaMethod`]).
+/// * `M` — The integration method type (e.g. [`ExplicitRungeKuttaMethod`](crate::erk::ExplicitRungeKuttaMethod)).
 /// * `T` — The floating-point scalar type.
 ///
 /// # Example
@@ -92,7 +92,7 @@ impl<M, T: Float> AdaptiveODESolver<M, T> {
     /// Set the maximum number of steps allowed.
     ///
     /// The solver will stop after this many steps and return the solution
-    /// computed so far. Defaults to [`MAX_STEPS`] (10 million).
+    /// computed so far. Defaults to `10_000_000`.
     #[must_use]
     pub fn with_max_steps(mut self, max_steps: usize) -> Self {
         self.max_steps = max_steps;

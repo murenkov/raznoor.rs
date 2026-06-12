@@ -14,7 +14,7 @@ use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 ///
 /// # Type parameters
 ///
-/// * `M` — The integration method type (e.g. [`ExplicitRungeKuttaMethod`]).
+/// * `M` — The integration method type (e.g. [`ExplicitRungeKuttaMethod`](crate::erk::ExplicitRungeKuttaMethod)).
 /// * `T` — The floating-point scalar type.
 ///
 /// # Example
