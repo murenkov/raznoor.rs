@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781271805118,
+  "lastUpdate": 1781272691323,
   "repoUrl": "https://github.com/murenkov/raznoor.rs",
   "entries": {
     "Benchmark": [
@@ -20955,6 +20955,330 @@ window.BENCHMARK_DATA = {
             "name": "precision/RK4_f64",
             "value": 150349,
             "range": "± 721",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ymurenkov@yandex.ru",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "committer": {
+            "email": "17390550+murenkov@users.noreply.github.com",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "distinct": true,
+          "id": "d533d7679c83eecb5c3a26d72ee2f41cdb7ecc90",
+          "message": "refactor(api): remove dead-code type aliases\n\nRemove four unused constants from `erk.rs` that were neither re-exported\nnor referenced anywhere in the codebase:\n- `EULER` (use `RUNGE_KUTTA_1` instead)\n- `MIDPOINT` (use `RUNGE_KUTTA_2` instead)\n- `KUTTA3` (use `RUNGE_KUTTA_3` instead)\n- `BUTCHER5` (use `RUNGE_KUTTA_5` instead)\n\nRemove three re-exported alias constants from `irk.rs`:\n- `BEULER` (use `BACKWARD_EULER` instead)\n- `MIDPOINT_IMP` (use `IMPLICIT_MIDPOINT` instead)\n- `TRAPEZOIDAL` (use `CRANK_NICOLSON` instead)\n\nUpdate re-exports in `lib.rs` and update alias tests in `tests/irk.rs`\nto use the canonical method names.",
+          "timestamp": "2026-06-12T16:47:54+03:00",
+          "tree_id": "8774118ced86fe3dafc74614986153b973999486",
+          "url": "https://github.com/murenkov/raznoor.rs/commit/d533d7679c83eecb5c3a26d72ee2f41cdb7ecc90"
+        },
+        "date": 1781272690952,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "fixed_step/RK1_f32_coarse",
+            "value": 7959,
+            "range": "± 120",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_coarse",
+            "value": 8924,
+            "range": "± 131",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f32_fine",
+            "value": 82049,
+            "range": "± 294",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_fine",
+            "value": 85480,
+            "range": "± 262",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_coarse",
+            "value": 10495,
+            "range": "± 89",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_coarse",
+            "value": 11051,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_fine",
+            "value": 102668,
+            "range": "± 525",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_fine",
+            "value": 108413,
+            "range": "± 3530",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_coarse",
+            "value": 12954,
+            "range": "± 89",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_coarse",
+            "value": 13751,
+            "range": "± 118",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_fine",
+            "value": 126877,
+            "range": "± 1174",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_fine",
+            "value": 135137,
+            "range": "± 448",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_coarse",
+            "value": 15316,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_coarse",
+            "value": 16918,
+            "range": "± 477",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_fine",
+            "value": 150477,
+            "range": "± 15595",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_fine",
+            "value": 165495,
+            "range": "± 1500",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_coarse",
+            "value": 21886,
+            "range": "± 64",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_coarse",
+            "value": 23491,
+            "range": "± 2470",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_fine",
+            "value": 214142,
+            "range": "± 2055",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_fine",
+            "value": 230927,
+            "range": "± 787",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_coarse",
+            "value": 21929,
+            "range": "± 55",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_coarse",
+            "value": 23477,
+            "range": "± 68",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_fine",
+            "value": 216185,
+            "range": "± 579",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_fine",
+            "value": 238181,
+            "range": "± 8059",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_coarse",
+            "value": 25303,
+            "range": "± 56",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_coarse",
+            "value": 27193,
+            "range": "± 155",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_fine",
+            "value": 249883,
+            "range": "± 1221",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_fine",
+            "value": 266378,
+            "range": "± 602",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f32",
+            "value": 6366,
+            "range": "± 64",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f64",
+            "value": 41145,
+            "range": "± 345",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f32",
+            "value": 6465,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f64",
+            "value": 41258,
+            "range": "± 721",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK1_fixed",
+            "value": 961995,
+            "range": "± 75923",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK2_fixed",
+            "value": 1219398,
+            "range": "± 18058",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK3_fixed",
+            "value": 1523334,
+            "range": "± 29825",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK4_fixed",
+            "value": 1800847,
+            "range": "± 10526",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK5_fixed",
+            "value": 2622012,
+            "range": "± 15778",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_fixed",
+            "value": 2673599,
+            "range": "± 9671",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_fixed",
+            "value": 3111620,
+            "range": "± 10765",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_adaptive",
+            "value": 163121,
+            "range": "± 933",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_adaptive",
+            "value": 166973,
+            "range": "± 753",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK1_100k",
+            "value": 11590532,
+            "range": "± 22468",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK2_100k",
+            "value": 16212657,
+            "range": "± 34437",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK3_100k",
+            "value": 21119189,
+            "range": "± 95445",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK4_100k",
+            "value": 26258784,
+            "range": "± 468902",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK5_100k",
+            "value": 38160696,
+            "range": "± 119511",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/Fehlberg45_100k",
+            "value": 38503865,
+            "range": "± 143173",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/DP45_100k",
+            "value": 44578699,
+            "range": "± 160267",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f32",
+            "value": 149989,
+            "range": "± 720",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f64",
+            "value": 154399,
+            "range": "± 2407",
             "unit": "ns/iter"
           }
         ]
