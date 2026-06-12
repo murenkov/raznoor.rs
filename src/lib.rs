@@ -71,8 +71,8 @@ pub use erk::{
     RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
 };
 pub use irk::{
-    BACKWARD_EULER, BEULER, CRANK_NICOLSON, GAUSS_LEGENDRE_4, IMPLICIT_MIDPOINT, ImplicitRKScratch,
-    ImplicitRungeKuttaMethod, MIDPOINT_IMP, RADAU_IIA_3, RADAU_IIA_5, TRAPEZOIDAL,
+    BACKWARD_EULER, CRANK_NICOLSON, GAUSS_LEGENDRE_4, IMPLICIT_MIDPOINT, ImplicitRKScratch,
+    ImplicitRungeKuttaMethod, RADAU_IIA_3, RADAU_IIA_5,
 };
 pub use solver::{
     AdaptiveODESolver, AdaptiveRK, EnsembleODESolver, FixedStepODESolver, FixedStepRK, ODEMethod,

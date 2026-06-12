@@ -261,13 +261,10 @@ fn gauss_legendre_4_linear_f64() {
     }
 }
 
-// --- Alias tests ---
-
 #[test]
-fn beuler_alias() {
-    use raznoor::BEULER;
+fn backward_euler_exp_decay() {
     let (prob, u_exact) = exp_decay_problem();
-    let sol = FixedStepODESolver::new(BEULER, 0.01)
+    let sol = FixedStepODESolver::new(BACKWARD_EULER, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
@@ -276,10 +273,9 @@ fn beuler_alias() {
 }
 
 #[test]
-fn trapezoidal_alias() {
-    use raznoor::TRAPEZOIDAL;
+fn crank_nicolson_exp_decay() {
     let (prob, u_exact) = exp_decay_problem();
-    let sol = FixedStepODESolver::new(TRAPEZOIDAL, 0.01)
+    let sol = FixedStepODESolver::new(CRANK_NICOLSON, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
@@ -288,10 +284,9 @@ fn trapezoidal_alias() {
 }
 
 #[test]
-fn midpoint_imp_alias() {
-    use raznoor::MIDPOINT_IMP;
+fn implicit_midpoint_exp_decay() {
     let (prob, u_exact) = exp_decay_problem();
-    let sol = FixedStepODESolver::new(MIDPOINT_IMP, 0.01)
+    let sol = FixedStepODESolver::new(IMPLICIT_MIDPOINT, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
