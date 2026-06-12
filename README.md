@@ -1,12 +1,13 @@
 # raznoor
 
-A Rust library for solving ordinary differential equations (ODEs) using explicit and implicit Runge-Kutta methods.
+A Rust library for solving ordinary differential equations (ODEs) using explicit Runge-Kutta, implicit Runge-Kutta, and BDF methods.
 
 ## Features
 
 - Explicit Runge-Kutta methods of orders 1 through 5
 - Adaptive embedded Runge-Kutta pairs (Fehlberg45, Dormand–Prince45)
 - **Implicit** Runge-Kutta methods: Backward Euler, Implicit Midpoint, Crank–Nicolson, Gauss–Legendre 4, Radau IIA (orders 3 and 5)
+- **BDF** (Backward Differentiation Formula) methods of orders 1–6 (linear multistep, A(α)-stable)
 - Implicit methods use simplified Newton iteration with finite-difference Jacobian (no user-provided Jacobian required)
 - Event detection (root-finding during integration) with terminal and directional events
 - Generic over floating-point types (`f32`, `f64`)
@@ -38,7 +39,7 @@ for (t, u) in sol.t.iter().zip(sol.u.row(0).iter()) {
 
 ## Extensibility
 
-New method families (e.g. implicit Runge–Kutta, BDF) can be added by implementing the
+New method families can be added by implementing the
 [`ODEMethod`](https://docs.rs/raznoor/latest/raznoor/trait.ODEMethod.html) trait:
 
 ```rust
@@ -64,6 +65,8 @@ let sol = FixedStepODESolver::new(MyCustomMethod, 0.01).unwrap().solve(&prob).un
 
 ## Algorithms
 
+### Explicit Runge–Kutta
+
 | Variant                   | Order | Description                     |
 |---------------------------|-------|---------------------------------|
 | `RUNGE_KUTTA_1`           | 1     | Forward Euler method            |
@@ -73,6 +76,28 @@ let sol = FixedStepODESolver::new(MyCustomMethod, 0.01).unwrap().solve(&prob).un
 | `RUNGE_KUTTA_5`           | 5     | Butcher's fifth-order method    |
 | `FEHLBERG45`              | 4(5)  | Fehlberg embedded RK pair       |
 | `DORMAND_PRINCE45`        | 4(5)  | Dormand–Prince embedded RK pair |
+
+### Implicit Runge–Kutta
+
+| Variant                   | Order | Description                     |
+|---------------------------|-------|---------------------------------|
+| `BACKWARD_EULER`          | 1     | Backward Euler (L-stable)       |
+| `IMPLICIT_MIDPOINT`       | 2     | Implicit midpoint (symplectic)  |
+| `CRANK_NICOLSON`          | 2     | Crank–Nicolson / trapezoidal    |
+| `GAUSS_LEGENDRE_4`        | 4     | Two-stage Gauss–Legendre        |
+| `RADAU_IIA_3`             | 3     | Two-stage Radau IIA (L-stable)  |
+| `RADAU_IIA_5`             | 5     | Three-stage Radau IIA (L-stable)|
+
+### BDF (Backward Differentiation Formula)
+
+| Variant                   | Order | Description                     |
+|---------------------------|-------|---------------------------------|
+| `BDF1`                    | 1     | BDF order 1 (L-stable)          |
+| `BDF2`                    | 2     | BDF order 2 (L-stable)          |
+| `BDF3`                    | 3     | BDF order 3 (A(α)-stable)       |
+| `BDF4`                    | 4     | BDF order 4                     |
+| `BDF5`                    | 5     | BDF order 5                     |
+| `BDF6`                    | 6     | BDF order 6                     |
 
 ## License
 
