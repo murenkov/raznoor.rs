@@ -1,12 +1,13 @@
 #![allow(missing_docs, clippy::all, clippy::pedantic)]
 
-use criterion::{Criterion, Throughput, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use ndarray::{Array1, array};
 use raznoor::{
     AdaptiveODESolver, DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, FixedStepODESolver,
     ODEProblem, ODESolver, RUNGE_KUTTA_1, RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4,
     RUNGE_KUTTA_5,
 };
+use std::hint::black_box;
 
 type ERKMethod = ExplicitRungeKuttaMethod<f64>;
 
