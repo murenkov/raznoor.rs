@@ -10,7 +10,7 @@
 //! let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
 //!
 //! let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap().solve(&prob).unwrap();
-//! let u_last = sol.u[[0, sol.t.len() - 1]];
+//! let u_last = sol.u[[sol.t.len() - 1, 0]];
 //! let u_exact = 5.0_f64 * (1.1_f64 - 1.0_f64).exp() - 2.0 * 1.1 - 2.0;
 //! assert!((u_last - u_exact).abs() < 1e-4);
 //! ```

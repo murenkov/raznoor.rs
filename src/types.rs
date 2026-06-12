@@ -104,15 +104,15 @@ pub struct EventRecord<T> {
 ///
 /// # Fields
 /// * `t` — Time points at which the solution was evaluated.
-/// * `u` — State trajectories as a matrix of shape `(n_vars, n_times)` — each row is one
-///   variable's trajectory across all time points.
+/// * `u` — State trajectories as a matrix of shape `(n_times, n_vars)` — each row is one
+///   time step (all variable values at that time).
 /// * `events` — Events that fired during integration (empty if none).
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct ODESolution<T> {
     /// Time points at which the solution was evaluated.
     pub t: Box<[T]>,
-    /// State trajectories as a matrix of shape `(n_vars, n_times)`.
+    /// State trajectories as a matrix of shape `(n_times, n_vars)`.
     pub u: Array2<T>,
     /// Events that fired during integration.
     pub events: Vec<EventRecord<T>>,

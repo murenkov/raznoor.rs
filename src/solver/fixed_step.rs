@@ -75,8 +75,8 @@ where
         let n = prob.u0.len();
         let n_steps = ts.len();
 
-        let mut u = Array2::<T>::zeros((n, n_steps));
-        u.column_mut(0).assign(&prob.u0);
+        let mut u = Array2::<T>::zeros((n_steps, n));
+        u.row_mut(0).assign(&prob.u0);
 
         let mut scratch = self.method.prepare(n);
         let mut u_curr = prob.u0.clone();
@@ -93,7 +93,7 @@ where
                 .step_with_scratch(f, t_prev, dt, &u_curr, &mut scratch);
 
             if prob.events.is_empty() {
-                u.column_mut(i + 1).assign(&u_new);
+                u.row_mut(i + 1).assign(&u_new);
                 u_curr = u_new;
             } else {
                 let step = StepData {
@@ -110,19 +110,19 @@ where
                 let outcome = handle_step_events(&mut stepper, &step, &prob.events)?;
                 match outcome {
                     StepOutcome::None => {
-                        u.column_mut(i + 1).assign(&u_new);
+                        u.row_mut(i + 1).assign(&u_new);
                         u_curr = u_new;
                     }
                     StepOutcome::NonTerminalEvent(record) => {
                         events.push(record.clone());
                         ts[i + 1] = record.t;
-                        u.column_mut(i + 1).assign(&record.u);
+                        u.row_mut(i + 1).assign(&record.u);
                         u_curr = record.u;
                     }
                     StepOutcome::TerminalEvent(record) => {
                         events.push(record.clone());
                         ts[i + 1] = record.t;
-                        u.column_mut(i + 1).assign(&record.u);
+                        u.row_mut(i + 1).assign(&record.u);
                         final_step = i + 2;
                         break;
                     }
@@ -132,7 +132,7 @@ where
 
         if final_step < n_steps {
             ts.truncate(final_step);
-            u = u.slice(ndarray::s![.., ..final_step]).to_owned();
+            u = u.slice(ndarray::s![..final_step, ..]).to_owned();
         }
 
         Ok(ODESolution {

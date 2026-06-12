@@ -37,7 +37,7 @@ fn backward_euler_exp_decay_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         // Backward Euler is O(dt), so dt=0.01 should give error ~0.005
         assert!(error <= dt * 0.6, "BE: error {error} > dt {dt}*0.6");
@@ -52,7 +52,7 @@ fn implicit_midpoint_exp_decay_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         // Implicit midpoint is O(dt²)
         assert!(error <= dt * dt * 2.0, "Midpoint: error {error} > dt²*2");
@@ -67,7 +67,7 @@ fn crank_nicolson_exp_decay_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         // Crank-Nicolson is O(dt²)
         assert!(error <= dt * dt * 2.0, "CN: error {error} > dt²*2");
@@ -82,7 +82,7 @@ fn radau_ii_3_exp_decay_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         // Radau IIA 2-stage is O(dt³)
         assert!(error <= dt * dt * dt * 5.0, "Radau3: error {error} > dt³*5");
@@ -97,7 +97,7 @@ fn radau_ii_5_exp_decay_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     let error = (u_last - u_exact).abs();
     // Radau IIA 3-stage is O(dt⁵)
     assert!(error <= dt.powi(5) * 20.0, "Radau5: error {error} > dt⁵*20");
@@ -111,7 +111,7 @@ fn gauss_legendre_4_exp_decay_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         // Gauss-Legendre 2-stage is O(dt⁴)
         assert!(error <= dt.powi(4) * 10.0, "GL4: error {error} > dt⁴*10");
@@ -128,7 +128,7 @@ fn backward_euler_stiff_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     // Backward Euler is L-stable, should handle stiffness
     let error = (u_last - u_exact).abs();
     assert!(error < 0.1, "BE stiff: error {error} >= 0.1");
@@ -142,7 +142,7 @@ fn radau_ii_5_stiff_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     // Radau IIA is L-stable, should handle stiffness well
     // The exact solution is essentially 0 at t=1 with dt=0.1
     assert!(
@@ -161,7 +161,7 @@ fn backward_euler_oscillator_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         // Backward Euler is first-order, so error tolerance is looser
         assert!(res <= 0.05, "BE oscillator var {i}: residual {res} > 0.05");
@@ -176,7 +176,7 @@ fn implicit_midpoint_oscillator_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         // Implicit midpoint is second-order and symplectic, handles oscillation well
         assert!(
@@ -196,7 +196,7 @@ fn implicit_midpoint_linear_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(
             res <= 0.02,
@@ -213,7 +213,7 @@ fn crank_nicolson_linear_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.02, "CN linear var {i}: residual {res} > 0.02");
     }
@@ -227,7 +227,7 @@ fn radau_ii_3_linear_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.02, "Radau3 linear var {i}: residual {res} > 0.02");
     }
@@ -241,7 +241,7 @@ fn radau_ii_5_linear_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.02, "Radau5 linear var {i}: residual {res} > 0.02");
     }
@@ -255,7 +255,7 @@ fn gauss_legendre_4_linear_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.02, "GL4 linear var {i}: residual {res} > 0.02");
     }
@@ -268,7 +268,7 @@ fn backward_euler_exp_decay() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     assert!((u_last - u_exact).abs() < 0.01);
 }
 
@@ -279,7 +279,7 @@ fn crank_nicolson_exp_decay() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     assert!((u_last - u_exact).abs() < 0.0001);
 }
 
@@ -290,7 +290,7 @@ fn implicit_midpoint_exp_decay() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     assert!((u_last - u_exact).abs() < 0.0001);
 }
 
@@ -309,7 +309,7 @@ fn backward_euler_exp_decay_f32() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     assert!((u_last - u_exact).abs() < 0.01, "BE f32: error too large");
 }
 
@@ -321,7 +321,7 @@ fn implicit_midpoint_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -335,7 +335,7 @@ fn crank_nicolson_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -349,7 +349,7 @@ fn radau_ii_3_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -363,7 +363,7 @@ fn radau_ii_5_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -377,7 +377,7 @@ fn gauss_legendre_4_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }

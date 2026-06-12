@@ -43,7 +43,7 @@ fn bdf1_exp_decay_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         // BDF1 is O(dt), so dt=0.01 should give error ~0.005
         assert!(error <= dt * 0.6, "BDF1: error {error} > dt {dt}*0.6");
@@ -58,7 +58,7 @@ fn bdf2_exp_decay_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         // BDF2 is O(dt²)
         assert!(error <= dt * dt * 2.0, "BDF2: error {error} > dt²*2");
@@ -73,7 +73,7 @@ fn bdf3_exp_decay_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         // BDF3 is O(dt³)
         assert!(error <= dt.powi(3) * 5.0, "BDF3: error {error} > dt³*5");
@@ -88,7 +88,7 @@ fn bdf4_exp_decay_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     let error = (u_last - u_exact).abs();
     // With 10 steps including 3 startup steps, overall error ~0.005
     assert!(error <= 5e-3, "BDF4: error {error} > 5e-3");
@@ -98,7 +98,7 @@ fn bdf4_exp_decay_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u2 = sol2.u[[0, sol2.t.len() - 1]];
+    let u2 = sol2.u[[sol2.t.len() - 1, 0]];
     let error2 = (u2 - u_exact).abs();
     let ratio = error / error2;
     // Startup phase reduces effective order on coarse grids.
@@ -113,7 +113,7 @@ fn bdf5_exp_decay_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     let error = (u_last - u_exact).abs();
     assert!(error <= 1e-2, "BDF5: error {error} > 1e-2");
     let dt2 = 0.1;
@@ -121,7 +121,7 @@ fn bdf5_exp_decay_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u2 = sol2.u[[0, sol2.t.len() - 1]];
+    let u2 = sol2.u[[sol2.t.len() - 1, 0]];
     let error2 = (u2 - u_exact).abs();
     let ratio = error / error2;
     assert!(ratio > 3.0, "BDF5: error ratio {ratio} too small");
@@ -135,7 +135,7 @@ fn bdf6_exp_decay_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     let error = (u_last - u_exact).abs();
     assert!(error <= 1e-2, "BDF6: error {error} > 1e-2");
     let dt2 = 0.1;
@@ -143,7 +143,7 @@ fn bdf6_exp_decay_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u2 = sol2.u[[0, sol2.t.len() - 1]];
+    let u2 = sol2.u[[sol2.t.len() - 1, 0]];
     let error2 = (u2 - u_exact).abs();
     let ratio = error / error2;
     assert!(ratio > 3.0, "BDF6: error ratio {ratio} too small");
@@ -159,7 +159,7 @@ fn bdf2_exp_decay_sin_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         assert!(error <= dt * dt * 3.0, "BDF2 sin: error {error} > dt²*3");
     }
@@ -173,7 +173,7 @@ fn bdf3_exp_decay_sin_f64() {
             .unwrap()
             .solve(&prob)
             .unwrap();
-        let u_last = sol.u[[0, sol.t.len() - 1]];
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         assert!(
             error <= dt.powi(3) * 10.0,
@@ -192,7 +192,7 @@ fn bdf1_stiff_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     let error = (u_last - u_exact).abs();
     assert!(error < 0.1, "BDF1 stiff: error {error} >= 0.1");
 }
@@ -205,7 +205,7 @@ fn bdf2_stiff_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     assert!(
         (u_last - 0.0_f64).abs() < 0.05,
         "BDF2 stiff: |u_last| = {u_last} >= 0.05"
@@ -220,7 +220,7 @@ fn bdf3_stiff_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     assert!(
         (u_last - 0.0_f64).abs() < 0.05,
         "BDF3 stiff: |u_last| = {u_last} >= 0.05"
@@ -235,7 +235,7 @@ fn bdf4_stiff_f64() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     assert!(
         (u_last - 0.0_f64).abs() < 0.05,
         "BDF4 stiff: |u_last| = {u_last} >= 0.05"
@@ -252,7 +252,7 @@ fn bdf1_oscillator_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(
             res <= 0.05,
@@ -269,7 +269,7 @@ fn bdf2_oscillator_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(
             res <= 0.02,
@@ -288,7 +288,7 @@ fn bdf2_linear_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.02, "BDF2 linear var {i}: residual {res} > 0.02");
     }
@@ -302,7 +302,7 @@ fn bdf3_linear_f64() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.02, "BDF3 linear var {i}: residual {res} > 0.02");
     }
@@ -323,7 +323,7 @@ fn bdf1_exp_decay_f32() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    let u_last = sol.u[[0, sol.t.len() - 1]];
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
     assert!((u_last - u_exact).abs() < 0.01, "BDF1 f32: error too large");
 }
 
@@ -335,7 +335,7 @@ fn bdf2_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -349,7 +349,7 @@ fn bdf3_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -363,7 +363,7 @@ fn bdf4_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -377,7 +377,7 @@ fn bdf5_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -391,7 +391,7 @@ fn bdf6_linear_f32() {
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.row(i);
+        let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(res <= 0.01);
     }
@@ -419,8 +419,8 @@ fn bdf1_matches_backward_euler() {
         .solve(&prob)
         .unwrap();
 
-    let u_be = sol_be.u[[0, sol_be.t.len() - 1]];
-    let u_bdf1 = sol_bdf1.u[[0, sol_bdf1.t.len() - 1]];
+    let u_be = sol_be.u[[sol_be.t.len() - 1, 0]];
+    let u_bdf1 = sol_bdf1.u[[sol_bdf1.t.len() - 1, 0]];
     assert!(
         (u_be - u_bdf1).abs() < 1e-10,
         "BDF1 and Backward Euler differ by {}",

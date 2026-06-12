@@ -47,7 +47,7 @@ fn solve_dt_larger_than_tspan() {
     assert!((sol.t[0] - 0.0_f64).abs() < f64::EPSILON);
     assert!((sol.t[1] - 1.0_f64).abs() < f64::EPSILON);
     assert!(
-        (sol.u[[0, 1]] - 1.0_f64).abs() < f64::EPSILON,
+        (sol.u[[1, 0]] - 1.0_f64).abs() < f64::EPSILON,
         "solution should remain at u0"
     );
 }
@@ -80,7 +80,7 @@ fn solve_empty_system() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    assert_eq!(sol.u.nrows(), 0, "empty system should have 0 variables");
+    assert_eq!(sol.u.ncols(), 0, "empty system should have 0 variables");
     assert!(sol.t.len() >= 2, "should have at least 2 time points");
 }
 
@@ -136,7 +136,7 @@ fn solve_adaptive_negative_direction() {
         .unwrap()
         .solve(&prob)
         .unwrap();
-    assert_eq!(sol.u.nrows(), 1);
+    assert_eq!(sol.u.ncols(), 1);
     assert!(
         (sol.t[0] - 1.0_f64).abs() < f64::EPSILON,
         "first time point should be t0"
@@ -158,7 +158,7 @@ fn solve_adaptive_tight_tolerances() {
         "adaptive solve with tight tolerances should not panic"
     );
     let sol = result.unwrap();
-    assert_eq!(sol.u.nrows(), 1);
+    assert_eq!(sol.u.ncols(), 1);
     assert!(sol.t.len() > 1, "should produce at least 2 time points");
 }
 

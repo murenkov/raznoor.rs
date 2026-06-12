@@ -23,7 +23,7 @@
 //! let f = |_t: f64, u: &ndarray::Array1<f64>| array![-u[0]];
 //! let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
 //! let sol = FixedStepODESolver::new(BDF2, 0.1).unwrap().solve(&prob).unwrap();
-//! let u_last = sol.u[[0, sol.t.len() - 1]];
+//! let u_last = sol.u[[sol.t.len() - 1, 0]];
 //! let u_exact = (-1.0_f64).exp();
 //! assert!((u_last - u_exact).abs() < 0.01);
 //! ```

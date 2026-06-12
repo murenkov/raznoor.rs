@@ -1,4 +1,4 @@
-use ndarray::{Array1, Array2, ShapeBuilder};
+use ndarray::{Array1, Array2};
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
@@ -212,8 +212,8 @@ where
         }
 
         let n_times = ts.len();
-        let u_arr = Array2::from_shape_vec((n, n_times).f(), us_data)
-            .expect("state data length matches shape");
+        let u_arr =
+            Array2::from_shape_vec((n_times, n), us_data).expect("state data length matches shape");
 
         Ok(ODESolution {
             t: ts.into(),
