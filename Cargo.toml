@@ -4,6 +4,7 @@ version = "0.2.0"
 description = "Explicit Runge-Kutta ODE solver for scalar and system initial value problems with event detection"
 license = "MIT"
 edition = "2024"
+rust-version = "1.96"
 
 [lints.rust]
 missing_docs = "deny"
