@@ -29,7 +29,20 @@ jobs:
       - name: Install pre-commit
         uses: pre-commit/action@v3.0.1
 
+      - name: Clippy
+        run: cargo clippy --all-targets ${{ matrix.features }} -- -D warnings
+
       - name: Test
         run: cargo test ${{ matrix.features }}
+
+      - name: Install cargo-deny
+        if: ${{ matrix.features == '' }}
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: Deny check
+        if: ${{ matrix.features == '' }}
+        run: cargo deny check
 
 

@@ -1,11 +1,10 @@
 [advisories]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "warn"
+unmaintained = "workspace"
+yanked = "deny"
 
 [licenses]
 allow = ["MIT"]
-confidence = 0.8
+confidence-threshold = 0.8
 
 [bans]
 multiple-versions = "deny"
