@@ -12,6 +12,7 @@ A Rust library for solving ordinary differential equations (ODEs) using explicit
 - Event detection (root-finding during integration) with terminal and directional events
 - Generic over floating-point types (`f32`, `f64`)
 - Error handling via `SolverError` instead of panics
+- **Parallel** ensemble solving via `rayon` (optional `parallel` feature)
 
 ## Usage
 
@@ -36,6 +37,39 @@ for (t, u) in sol.t.iter().zip(sol.u.row(0).iter()) {
     println!("t = {t:.2}, u = {u:.6}");
 }
 ```
+
+## Parallel ensemble solving
+
+Enable parallel solving of multiple ODE problems with the `parallel` feature:
+
+```toml
+[dependencies]
+raznoor = { version = "0.2.0", features = ["parallel"] }
+```
+
+[`EnsembleODEProblem`] groups initial conditions into a 2‑D array of shape
+`(n_members, n_vars)` so you can solve the same ODE system for many starting points.
+The [`EnsembleODESolver`] trait (implemented by both [`FixedStepODESolver`] and
+[`AdaptiveODESolver`]) distributes work across the rayon thread pool:
+
+```rust
+use ndarray::array;
+use ndarray::Array1;
+use raznoor::{EnsembleODEProblem, EnsembleODESolver, FixedStepODESolver, RUNGE_KUTTA_4};
+
+let f = |t: f64, u: &Array1<f64>| array![2.0 * t + u[0]];
+let u0 = array![[1.0], [0.5], [0.0]];
+let ensemble = EnsembleODEProblem::new(f, u0, (1.0, 1.1)).unwrap();
+let solver = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap();
+let results = solver.solve_batch(&ensemble);
+
+assert_eq!(results.len(), 3);
+assert!(results.iter().all(|r| r.is_ok()));
+```
+
+This is especially useful for **Monte Carlo simulations**, parameter sweeps, and
+ensemble forecasting where you need to explore many initial conditions with the
+same dynamics.
 
 ## Extensibility
 
