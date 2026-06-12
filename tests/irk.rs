@@ -312,3 +312,73 @@ fn backward_euler_exp_decay_f32() {
     let u_last = sol.u[[0, sol.t.len() - 1]];
     assert!((u_last - u_exact).abs() < 0.01, "BE f32: error too large");
 }
+
+#[test]
+fn implicit_midpoint_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(IMPLICIT_MIDPOINT, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
+
+#[test]
+fn crank_nicolson_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(CRANK_NICOLSON, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
+
+#[test]
+fn radau_ii_3_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(RADAU_IIA_3, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
+
+#[test]
+fn radau_ii_5_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(RADAU_IIA_5, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
+
+#[test]
+fn gauss_legendre_4_linear_f32() {
+    let (prob, reference) = linear_problem::<f32>();
+    let sol = FixedStepODESolver::new(GAUSS_LEGENDRE_4, 0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    for (i, ref_traj) in reference.iter().enumerate() {
+        let computed = sol.u.row(i);
+        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
+        assert!(res <= 0.01);
+    }
+}
