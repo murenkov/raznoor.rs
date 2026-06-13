@@ -190,7 +190,7 @@ pub struct BDFScratch<T> {
 
 impl<T: Float> BDFScratch<T> {
     /// Maximum number of past states to retain in the history ring buffer.
-    fn max_history(target_order: usize) -> usize {
+    const fn max_history(target_order: usize) -> usize {
         target_order.saturating_sub(1)
     }
 }

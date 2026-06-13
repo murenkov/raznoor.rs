@@ -289,7 +289,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ImplicitRungeKuttaMethod<f64> {
                 t,
                 dt,
                 u,
-                &mut scratch.ks,
+                &scratch.ks,
                 &mut scratch.args,
                 &mut scratch.work,
             );
@@ -327,7 +327,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ImplicitRungeKuttaMethod<f64> {
                     t,
                     dt,
                     u,
-                    &mut scratch.ks,
+                    &scratch.ks,
                     &mut scratch.args,
                     &mut scratch.work,
                 );
@@ -408,7 +408,7 @@ fn compute_stage_residual<T, F>(
     t: T,
     dt: T,
     u: &Array1<T>,
-    ks: &mut [Array1<T>],
+    ks: &[Array1<T>],
     args: &mut [Array1<T>],
     r_flat: &mut Array1<T>,
 ) -> T

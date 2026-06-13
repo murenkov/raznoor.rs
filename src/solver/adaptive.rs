@@ -72,25 +72,25 @@ impl<M: ODEMethod<T>, T: Float> AdaptiveODESolver<M, T> {
 
     /// Return the embedded method pair.
     #[must_use]
-    pub fn method(&self) -> &M {
+    pub const fn method(&self) -> &M {
         &self.method
     }
 
     /// Return the initial step size guess.
     #[must_use]
-    pub fn dt(&self) -> T {
+    pub const fn dt(&self) -> T {
         self.dt
     }
 
     /// Return the absolute tolerance.
     #[must_use]
-    pub fn atol(&self) -> T {
+    pub const fn atol(&self) -> T {
         self.atol
     }
 
     /// Return the relative tolerance.
     #[must_use]
-    pub fn rtol(&self) -> T {
+    pub const fn rtol(&self) -> T {
         self.rtol
     }
 
@@ -99,14 +99,14 @@ impl<M: ODEMethod<T>, T: Float> AdaptiveODESolver<M, T> {
     /// The solver will stop after this many steps and return the solution
     /// computed so far. Defaults to `10_000_000`.
     #[must_use]
-    pub fn with_max_steps(mut self, max_steps: usize) -> Self {
+    pub const fn with_max_steps(mut self, max_steps: usize) -> Self {
         self.max_steps = max_steps;
         self
     }
 
     /// Return the maximum number of steps allowed.
     #[must_use]
-    pub fn max_steps(&self) -> usize {
+    pub const fn max_steps(&self) -> usize {
         self.max_steps
     }
 }

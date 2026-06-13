@@ -24,7 +24,7 @@ impl<T, F> RhsODEFn<T> for F where F: Fn(T, &Array1<T>) -> Array1<T> {}
 type EventFn<T> = Arc<dyn Fn(T, &Array1<T>) -> T + Send + Sync>;
 
 /// The direction of a zero crossing to detect for an event function.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventDirection {
     /// Detect any zero crossing (both increasing and decreasing).
     Any,
@@ -121,7 +121,7 @@ pub struct ODESolution<T> {
 impl<T> ODESolution<T> {
     /// Create a new ODE solution from time points and state trajectories (no events).
     #[must_use]
-    pub fn new(t: Box<[T]>, u: Array2<T>) -> Self {
+    pub const fn new(t: Box<[T]>, u: Array2<T>) -> Self {
         Self {
             t,
             u,
@@ -131,7 +131,7 @@ impl<T> ODESolution<T> {
 
     /// Create a new ODE solution from time points, state trajectories, and event records.
     #[must_use]
-    pub fn with_events(t: Box<[T]>, u: Array2<T>, events: Vec<EventRecord<T>>) -> Self {
+    pub const fn with_events(t: Box<[T]>, u: Array2<T>, events: Vec<EventRecord<T>>) -> Self {
         Self { t, u, events }
     }
 }
@@ -169,19 +169,19 @@ pub enum SolverError {
 impl std::fmt::Display for SolverError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SolverError::AdaptiveNotSupported => {
+            Self::AdaptiveNotSupported => {
                 write!(f, "adaptive stepping not supported for this algorithm")
             }
-            SolverError::InvalidStepSize => {
+            Self::InvalidStepSize => {
                 write!(f, "step size must be positive")
             }
-            SolverError::InvalidInitialCondition => {
+            Self::InvalidInitialCondition => {
                 write!(f, "initial condition contains NaN or infinite values")
             }
-            SolverError::EventError => {
+            Self::EventError => {
                 write!(f, "event function returned invalid value")
             }
-            SolverError::NewtonConvergenceError => {
+            Self::NewtonConvergenceError => {
                 write!(
                     f,
                     "Newton iteration did not converge for implicit RK stages"
@@ -344,19 +344,19 @@ impl<T, F> EnsembleODEProblem<T, F> {
 
     /// Return a reference to the right-hand side function.
     #[must_use]
-    pub fn f(&self) -> &F {
+    pub const fn f(&self) -> &F {
         &self.f
     }
 
     /// Return a reference to the initial conditions array (shape `(n_members, n_vars)`).
     #[must_use]
-    pub fn u0(&self) -> &Array2<T> {
+    pub const fn u0(&self) -> &Array2<T> {
         &self.u0
     }
 
     /// Return the time span.
     #[must_use]
-    pub fn tspan(&self) -> (T, T)
+    pub const fn tspan(&self) -> (T, T)
     where
         T: Copy,
     {

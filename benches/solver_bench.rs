@@ -1,4 +1,4 @@
-#![allow(missing_docs, clippy::all, clippy::pedantic)]
+#![allow(missing_docs, clippy::all, clippy::pedantic, clippy::nursery)]
 
 use criterion::{Criterion, Throughput, criterion_group, criterion_main};
 use ndarray::{Array1, array};

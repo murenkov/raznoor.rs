@@ -14,7 +14,7 @@ use raznoor::{
 
 #[test]
 fn batch_fixed_step() {
-    let f = |t: f64, u: &Array1<f64>| array![2.0 * t + u[0]];
+    let f = |t: f64, u: &Array1<f64>| array![2.0f64.mul_add(t, u[0])];
     let u0 = array![[1.0], [0.5], [0.0]];
     let ensemble = EnsembleODEProblem::new(f, u0, (1.0, 1.1)).unwrap();
     let solver = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap();
@@ -31,7 +31,7 @@ fn batch_fixed_step() {
 
 #[test]
 fn batch_adaptive() {
-    let f = |t: f64, u: &Array1<f64>| array![2.0 * t + u[0]];
+    let f = |t: f64, u: &Array1<f64>| array![2.0f64.mul_add(t, u[0])];
     let u0 = array![[1.0], [0.5], [0.0]];
     let ensemble = EnsembleODEProblem::new(f, u0, (1.0, 1.1)).unwrap();
     let solver = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6).unwrap();

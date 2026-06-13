@@ -1,5 +1,5 @@
 pub mod adaptive;
-pub(crate) mod events;
+pub mod events;
 pub mod fixed_step;
 
 pub use adaptive::AdaptiveODESolver;
