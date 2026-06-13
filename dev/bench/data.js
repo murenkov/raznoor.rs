@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781341270781,
+  "lastUpdate": 1781342226790,
   "repoUrl": "https://github.com/murenkov/raznoor.rs",
   "entries": {
     "Benchmark": [
@@ -23547,6 +23547,330 @@ window.BENCHMARK_DATA = {
             "name": "precision/RK4_f64",
             "value": 154331,
             "range": "± 338",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ymurenkov@yandex.ru",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "committer": {
+            "email": "17390550+murenkov@users.noreply.github.com",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "distinct": true,
+          "id": "5fe9028bab7c4fb147a94abc61b9fff37f5aa27a",
+          "message": "feat!: reorient ODESolution.u to row-major (n_times, n_vars) shape\n\nChange the solution matrix from (n_vars, n_times) (Fortran-order, each row\nis one variable trajectory) to (n_times, n_vars) (C-order, each row is\none time step). This makes per-time-slice access cache-efficient, which is\nthe more common use case.\n\nChanges:\n- src/types.rs: update doc comments for the new shape\n- src/solver/fixed_step.rs: allocation and all column/row operations\n  swapped (column_mut -> row_mut, slice axis swapped)\n- src/solver/adaptive.rs: remove .f() Fortran-order construction,\n  use default C-order with swapped shape\n- src/solver/adaptive.rs: drop unused ShapeBuilder import\n- Doc examples (src/lib.rs, src/bdf.rs, src/irk.rs): swap indices\n  from [var, time] to [time, var]\n- README.md: row(0) -> column(0) for per-variable access\n- All test files: row(i) -> column(i), index ordering swapped,\n  nrows() -> ncols() as appropriate\n- Tests use .column(i).to_owned() for contiguous .as_slice() access\n  (columns are strided in row-major layout)\n\nBREAKING CHANGE: ODESolution.u shape changes from (n_vars, n_times)\nto (n_times, n_vars). Code accessing sol.u.row(i) for variable i\nmust use sol.u.column(i) instead. Indexing sol.u[[i, j]] swaps from\n[var, time] to [time, var].",
+          "timestamp": "2026-06-13T12:06:44+03:00",
+          "tree_id": "de1a953ba6c5c4c3f4a3e4e378b68313568353a8",
+          "url": "https://github.com/murenkov/raznoor.rs/commit/5fe9028bab7c4fb147a94abc61b9fff37f5aa27a"
+        },
+        "date": 1781342226168,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "fixed_step/RK1_f32_coarse",
+            "value": 8682,
+            "range": "± 156",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_coarse",
+            "value": 9332,
+            "range": "± 163",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f32_fine",
+            "value": 89820,
+            "range": "± 435",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_fine",
+            "value": 90540,
+            "range": "± 377",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_coarse",
+            "value": 11640,
+            "range": "± 23",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_coarse",
+            "value": 11610,
+            "range": "± 53",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_fine",
+            "value": 110925,
+            "range": "± 910",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_fine",
+            "value": 113997,
+            "range": "± 343",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_coarse",
+            "value": 13970,
+            "range": "± 33",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_coarse",
+            "value": 14234,
+            "range": "± 39",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_fine",
+            "value": 136528,
+            "range": "± 1061",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_fine",
+            "value": 139710,
+            "range": "± 1694",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_coarse",
+            "value": 16471,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_coarse",
+            "value": 16754,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_fine",
+            "value": 160625,
+            "range": "± 1221",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_fine",
+            "value": 164399,
+            "range": "± 1047",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_coarse",
+            "value": 23039,
+            "range": "± 325",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_coarse",
+            "value": 23901,
+            "range": "± 123",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_fine",
+            "value": 225087,
+            "range": "± 505",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_fine",
+            "value": 232595,
+            "range": "± 1026",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_coarse",
+            "value": 23270,
+            "range": "± 78",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_coarse",
+            "value": 23927,
+            "range": "± 55",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_fine",
+            "value": 227641,
+            "range": "± 2692",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_fine",
+            "value": 236223,
+            "range": "± 4270",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_coarse",
+            "value": 26590,
+            "range": "± 84",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_coarse",
+            "value": 27263,
+            "range": "± 57",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_fine",
+            "value": 262942,
+            "range": "± 702",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_fine",
+            "value": 268368,
+            "range": "± 1818",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f32",
+            "value": 6472,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f64",
+            "value": 42208,
+            "range": "± 116",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f32",
+            "value": 6620,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f64",
+            "value": 42660,
+            "range": "± 98",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK1_fixed",
+            "value": 1014136,
+            "range": "± 5742",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK2_fixed",
+            "value": 1283426,
+            "range": "± 18328",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK3_fixed",
+            "value": 1583025,
+            "range": "± 9295",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK4_fixed",
+            "value": 1854549,
+            "range": "± 18660",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK5_fixed",
+            "value": 2614790,
+            "range": "± 6732",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_fixed",
+            "value": 2658562,
+            "range": "± 53743",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_fixed",
+            "value": 3045182,
+            "range": "± 23030",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_adaptive",
+            "value": 167424,
+            "range": "± 2117",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_adaptive",
+            "value": 164720,
+            "range": "± 780",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK1_100k",
+            "value": 11501528,
+            "range": "± 38194",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK2_100k",
+            "value": 16300291,
+            "range": "± 271687",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK3_100k",
+            "value": 21507730,
+            "range": "± 528604",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK4_100k",
+            "value": 26438464,
+            "range": "± 288794",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK5_100k",
+            "value": 38761530,
+            "range": "± 143578",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/Fehlberg45_100k",
+            "value": 39121131,
+            "range": "± 543554",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/DP45_100k",
+            "value": 45165498,
+            "range": "± 235043",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f32",
+            "value": 150947,
+            "range": "± 1782",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f64",
+            "value": 160588,
+            "range": "± 449",
             "unit": "ns/iter"
           }
         ]
