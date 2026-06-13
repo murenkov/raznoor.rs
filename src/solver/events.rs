@@ -6,12 +6,12 @@ use crate::solver::ODEMethod;
 use crate::types::{Event, EventDirection, EventRecord, RhsODEFn, SolverError};
 
 /// Trait abstracting a single-step ODE advance for event bisection.
-pub(crate) trait StepForward<T> {
+pub trait StepForward<T> {
     fn step(&mut self, t: T, dt: T, u: &Array1<T>) -> Array1<T>;
 }
 
 /// Adapts an [`ODEMethod`] + right-hand side + scratch into a [`StepForward`].
-pub(crate) struct MethodStepper<'a, T: Float, M: ODEMethod<T>, F> {
+pub struct MethodStepper<'a, T: Float, M: ODEMethod<T>, F> {
     pub method: &'a M,
     pub f: &'a F,
     pub scratch: &'a mut M::Scratch,
@@ -24,12 +24,12 @@ impl<T: Float, M: ODEMethod<T>, F: RhsODEFn<T>> StepForward<T> for MethodStepper
     }
 }
 
-pub(crate) struct StepState<'a, T> {
+pub struct StepState<'a, T> {
     pub(crate) t: T,
     pub(crate) u: &'a Array1<T>,
 }
 
-pub(crate) fn bisect_event<T>(
+pub fn bisect_event<T>(
     t_left: T,
     t_right: T,
     u_left: &Array1<T>,
@@ -66,7 +66,7 @@ where
     (tr, u_event)
 }
 
-pub(crate) fn detect_events<T>(
+pub fn detect_events<T>(
     prev: &StepState<T>,
     curr: &StepState<T>,
     events: &[Event<T>],
@@ -111,7 +111,7 @@ where
 ///
 /// Both fields (`u_curr` and `u_new`) must refer to states on the same
 /// step interval `[t_prev, t_next]`.
-pub(crate) struct StepData<'a, T> {
+pub struct StepData<'a, T> {
     pub(crate) u_curr: &'a Array1<T>,
     pub(crate) u_new: &'a Array1<T>,
     pub(crate) t_prev: T,
@@ -119,7 +119,7 @@ pub(crate) struct StepData<'a, T> {
 }
 
 /// Result of event detection for a single integration step.
-pub(crate) enum StepOutcome<T> {
+pub enum StepOutcome<T> {
     /// No event fired; the candidate state is usable.
     None,
     /// A non-terminal event was detected.
@@ -134,7 +134,7 @@ pub(crate) enum StepOutcome<T> {
 /// `step.u_curr` (at `t_prev`) and `step.u_new` (at `t_next`). Returns
 /// a [`StepOutcome`] describing whether to continue, record a non-terminal
 /// event, or stop.
-pub(crate) fn handle_step_events<T>(
+pub fn handle_step_events<T>(
     stepper: &mut dyn StepForward<T>,
     step: &StepData<T>,
     prob_events: &[Event<T>],

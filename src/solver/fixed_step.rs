@@ -52,13 +52,13 @@ impl<M, T: Float> FixedStepODESolver<M, T> {
 
     /// Return the integration method.
     #[must_use]
-    pub fn method(&self) -> &M {
+    pub const fn method(&self) -> &M {
         &self.method
     }
 
     /// Return the absolute step size.
     #[must_use]
-    pub fn dt(&self) -> T {
+    pub const fn dt(&self) -> T {
         self.dt
     }
 }

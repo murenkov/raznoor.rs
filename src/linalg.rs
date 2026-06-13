@@ -16,7 +16,7 @@ use crate::types::RhsODEFn;
 /// Uses second-order central differences with step `h = 1e-6`.
 /// The result is stored in `jac` (overwritten).
 #[allow(clippy::many_single_char_names)]
-pub(crate) fn compute_jacobian<T, F>(jac: &mut Array2<T>, f: &F, t: T, u: &Array1<T>)
+pub fn compute_jacobian<T, F>(jac: &mut Array2<T>, f: &F, t: T, u: &Array1<T>)
 where
     T: Float + FromPrimitive,
     F: RhsODEFn<T>,
@@ -46,7 +46,7 @@ where
 /// U in the upper triangle including the diagonal). `piv` receives the
 /// row permutation: `piv[k]` is the index of the row that was swapped
 /// with row `k` at step `k`.
-pub(crate) fn lu_factor<T: Float>(a: &mut Array2<T>, piv: &mut [usize]) {
+pub fn lu_factor<T: Float>(a: &mut Array2<T>, piv: &mut [usize]) {
     let n = a.nrows();
     for k in 0..n {
         // Find pivot (largest element in column k, rows k..n-1)
@@ -89,7 +89,7 @@ pub(crate) fn lu_factor<T: Float>(a: &mut Array2<T>, piv: &mut [usize]) {
 ///
 /// `lu` is the in-place factorised matrix, `piv` is the permutation from
 /// `lu_factor`.  `b` is modified in-place to contain the solution `x`.
-pub(crate) fn lu_solve<T: Float>(lu: &Array2<T>, piv: &[usize], b: &mut Array1<T>) {
+pub fn lu_solve<T: Float>(lu: &Array2<T>, piv: &[usize], b: &mut Array1<T>) {
     let n = lu.nrows();
 
     // Apply row permutations

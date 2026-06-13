@@ -3,6 +3,9 @@ name = "raznoor"
 version = "0.2.0"
 description = "Explicit Runge-Kutta ODE solver for scalar and system initial value problems with event detection"
 license = "MIT"
+repository = "https://github.com/murenkov/raznoor.rs"
+keywords = ["ode", "solver", "runge-kutta", "numerical", "differential-equations"]
+categories = ["mathematics", "science"]
 edition = "2024"
 rust-version = "1.96"
 
@@ -12,6 +15,8 @@ missing_docs = "deny"
 [lints.clippy]
 all = "deny"
 pedantic = "deny"
+nursery = "deny"
+cargo = "deny"
 
 [dependencies]
 ndarray = "0.17.2"
