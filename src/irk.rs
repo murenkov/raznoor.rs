@@ -167,9 +167,21 @@ pub const RADAU_IIA_3: ImplicitRungeKuttaMethod<f64> = ImplicitRungeKuttaMethod 
 #[rustfmt::skip]
 #[allow(clippy::excessive_precision, clippy::unreadable_literal)]
 const RADAU_IIA_5_A: &[&[f64]] = &[
-    &[0.196_815_473_522_686_0_f64, -0.065_535_425_850_165_6_f64,  0.023_770_974_348_220_7_f64],
-    &[0.394_424_314_739_087_1_f64,  0.292_073_411_665_228_8_f64, -0.041_548_752_125_998_7_f64],
-    &[0.376_403_062_699_466_4_f64,  0.512_485_826_188_421_8_f64,            1.0_f64 / 9.0_f64],
+    &[
+        0.196_815_477_223_660_44_f64,
+        -0.065_535_425_850_198_38_f64,
+        0.023_770_974_348_220_15_f64,
+    ],
+    &[
+        0.394_424_314_739_087_3_f64,
+        0.292_073_411_665_228_43_f64,
+        -0.041_548_752_125_997_92_f64,
+    ],
+    &[
+        0.376_403_062_700_467_25_f64,
+        0.512_485_826_188_421_6_f64,
+        1.0_f64 / 9.0_f64,
+    ],
 ];
 
 /// Radau IIA method with three stages (fifth-order, L-stable, stiffly accurate).
@@ -182,18 +194,18 @@ const RADAU_IIA_5_A: &[&[f64]] = &[
 /// ```
 /// use raznoor::RADAU_IIA_5;
 /// assert_eq!(RADAU_IIA_5.b.len(), 3);
-/// assert!((RADAU_IIA_5.b.iter().sum::<f64>() - 1.0).abs() < 1e-11);
+/// assert!((RADAU_IIA_5.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
 /// ```
 pub const RADAU_IIA_5: ImplicitRungeKuttaMethod<f64> = ImplicitRungeKuttaMethod {
     a: RADAU_IIA_5_A,
     b: &[
-        0.376_403_062_699_466_4_f64,
-        0.512_485_826_188_421_8_f64,
+        0.376_403_062_700_467_25_f64,
+        0.512_485_826_188_421_6_f64,
         1.0_f64 / 9.0_f64,
     ],
     #[allow(clippy::unreadable_literal)]
     c: &[
-        0.155_051_025_721_682_3_f64,
+        0.155_051_025_721_682_22_f64,
         0.644_948_974_278_317_8_f64,
         1.0_f64,
     ],
