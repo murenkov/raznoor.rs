@@ -3,6 +3,8 @@ use num_traits::Float;
 use num_traits::FromPrimitive;
 use std::fmt::Display;
 
+use crate::types::SolverError;
+
 /// Dense output trait for continuous evaluation of ODE solutions.
 ///
 /// Implementors provide interpolation between discrete integration step points,
@@ -10,10 +12,11 @@ use std::fmt::Display;
 pub trait DenseOutput<T> {
     /// Evaluate the dense output at a single time point `t`.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `t` is outside the interpolation range `[t₀, tₙ₋₁]`.
-    fn call(&self, t: T) -> Array1<T>;
+    /// Returns [`SolverError::InterpolationOutOfRange`] if `t` is outside the
+    /// interpolation range `[t₀, tₙ₋₁]`.
+    fn call(&self, t: T) -> Result<Array1<T>, SolverError>;
 
     /// Evaluate the dense output at multiple (sorted) time points.
     ///
@@ -21,10 +24,11 @@ pub trait DenseOutput<T> {
     /// walk.  If `ts` is not sorted the result is still correct but performance
     /// degrades to O(n·m).
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if any `t` in `ts` is outside the interpolation range.
-    fn call_many(&self, ts: &[T]) -> Array2<T>;
+    /// Returns [`SolverError::InterpolationOutOfRange`] if any `t` in `ts` is
+    /// outside the interpolation range.
+    fn call_many(&self, ts: &[T]) -> Result<Array2<T>, SolverError>;
 }
 
 /// Cubic Hermite interpolant between integration step points.
@@ -45,9 +49,10 @@ pub trait DenseOutput<T> {
 ///       + h·(s³ - s²)·dy_{i+1}
 /// ```
 ///
-/// # Panics
+/// # Errors
 ///
-/// [`HermiteInterpolant::new`] panics if:
+/// [`HermiteInterpolant::new`] returns [`SolverError::InvalidInterpolationData`]
+/// if:
 /// * `t` has fewer than 2 elements.
 /// * `t`, `y`, `dy` have inconsistent lengths.
 /// * `t` is not strictly increasing.
@@ -64,31 +69,26 @@ pub struct HermiteInterpolant<T> {
 impl<T: Float + FromPrimitive + ndarray::ScalarOperand> HermiteInterpolant<T> {
     /// Create a new Hermite interpolant.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the inputs are inconsistent (see [`HermiteInterpolant`] docs).
-    #[must_use]
-    pub fn new(t: Box<[T]>, y: Array2<T>, dy: Array2<T>) -> Self {
-        assert!(t.len() >= 2, "time points must have at least 2 elements");
-        assert_eq!(
-            y.nrows(),
-            t.len(),
-            "y must have the same number of rows as t"
-        );
-        assert_eq!(
-            dy.nrows(),
-            t.len(),
-            "dy must have the same number of rows as t"
-        );
-        assert_eq!(
-            y.ncols(),
-            dy.ncols(),
-            "y and dy must have the same number of columns"
-        );
-        for i in 1..t.len() {
-            assert!(t[i - 1] < t[i], "time points must be strictly increasing");
+    /// Returns [`SolverError::InvalidInterpolationData`] if the inputs are
+    /// inconsistent (see [`HermiteInterpolant`] docs).
+    pub fn new(t: Box<[T]>, y: Array2<T>, dy: Array2<T>) -> Result<Self, SolverError> {
+        if t.len() < 2 {
+            return Err(SolverError::InvalidInterpolationData);
         }
-        Self { t, y, dy }
+        if y.nrows() != t.len() || dy.nrows() != t.len() {
+            return Err(SolverError::InvalidInterpolationData);
+        }
+        if y.ncols() != dy.ncols() {
+            return Err(SolverError::InvalidInterpolationData);
+        }
+        for i in 1..t.len() {
+            if t[i - 1] >= t[i] {
+                return Err(SolverError::InvalidInterpolationData);
+            }
+        }
+        Ok(Self { t, y, dy })
     }
 
     /// Return the time points.
@@ -141,13 +141,12 @@ impl<T: Float + FromPrimitive + ndarray::ScalarOperand> HermiteInterpolant<T> {
 impl<T: Float + FromPrimitive + ndarray::ScalarOperand + Display> DenseOutput<T>
     for HermiteInterpolant<T>
 {
-    fn call(&self, t: T) -> Array1<T> {
+    fn call(&self, t: T) -> Result<Array1<T>, SolverError> {
         let t0 = self.t[0];
         let t_last = self.t[self.t.len() - 1];
-        assert!(
-            !(t < t0 || t > t_last),
-            "t = {t} is outside the interpolation range [{t0}, {t_last}]"
-        );
+        if t < t0 || t > t_last {
+            return Err(SolverError::InterpolationOutOfRange);
+        }
 
         let i = self
             .t
@@ -155,12 +154,12 @@ impl<T: Float + FromPrimitive + ndarray::ScalarOperand + Display> DenseOutput<T>
             .saturating_sub(1)
             .min(self.t.len() - 2);
 
-        self.interpolate(t, i)
+        Ok(self.interpolate(t, i))
     }
 
-    fn call_many(&self, ts: &[T]) -> Array2<T> {
+    fn call_many(&self, ts: &[T]) -> Result<Array2<T>, SolverError> {
         if ts.is_empty() {
-            return Array2::zeros((0, self.y.ncols()));
+            return Ok(Array2::zeros((0, self.y.ncols())));
         }
 
         let t0 = self.t[0];
@@ -170,10 +169,9 @@ impl<T: Float + FromPrimitive + ndarray::ScalarOperand + Display> DenseOutput<T>
         let mut interval: usize = 0;
 
         for (row, &t_val) in ts.iter().enumerate() {
-            assert!(
-                !(t_val < t0 || t_val > t_last),
-                "t = {t_val} is outside the interpolation range [{t0}, {t_last}]"
-            );
+            if t_val < t0 || t_val > t_last {
+                return Err(SolverError::InterpolationOutOfRange);
+            }
 
             while interval + 1 < self.t.len() - 1 && t_val >= self.t[interval + 1] {
                 interval += 1;
@@ -186,7 +184,7 @@ impl<T: Float + FromPrimitive + ndarray::ScalarOperand + Display> DenseOutput<T>
             result.row_mut(row).assign(&val);
         }
 
-        result
+        Ok(result)
     }
 }
 
@@ -200,7 +198,7 @@ mod tests {
         let t: Box<[f64]> = Box::new([0.0, 1.0, 2.0, 3.0]);
         let y = array![[0.0, 0.0], [1.0, 2.0], [4.0, 4.0], [9.0, 6.0]];
         let dy = array![[0.0, 2.0], [2.0, 2.0], [4.0, 2.0], [6.0, 2.0]];
-        HermiteInterpolant::new(t, y, dy)
+        HermiteInterpolant::new(t, y, dy).unwrap()
     }
 
     #[test]
@@ -209,7 +207,7 @@ mod tests {
         let ts = [0.0, 1.0, 2.0, 3.0];
         let expected = [[0.0, 0.0], [1.0, 2.0], [4.0, 4.0], [9.0, 6.0]];
         for (i, &t) in ts.iter().enumerate() {
-            let val = h.call(t);
+            let val = h.call(t).unwrap();
             assert_eq!(val, array![expected[i][0], expected[i][1]]);
         }
     }
@@ -219,7 +217,7 @@ mod tests {
         let h = make_interpolant();
         // For y = [t^2, 2t], dy = [2t, 2], the Hermite interpolant
         // reproduces the exact function at all points.
-        let val = h.call(0.5);
+        let val = h.call(0.5).unwrap();
         let expected = array![0.25, 1.0];
         for (v, e) in val.iter().zip(expected.iter()) {
             assert!((v - e).abs() < 1e-14);
@@ -230,10 +228,10 @@ mod tests {
     fn call_many_sorted() {
         let h = make_interpolant();
         let ts = vec![0.0, 0.5, 1.0, 2.5, 3.0];
-        let result = h.call_many(&ts);
+        let result = h.call_many(&ts).unwrap();
         assert_eq!(result.shape(), &[5, 2]);
         for (i, &t) in ts.iter().enumerate() {
-            let expected = h.call(t);
+            let expected = h.call(t).unwrap();
             for j in 0..2 {
                 assert!((result[[i, j]] - expected[j]).abs() < 1e-14);
             }
@@ -243,8 +241,8 @@ mod tests {
     #[test]
     fn single_point() {
         let h = make_interpolant();
-        let val = h.call(1.5);
-        let single = h.call_many(&[1.5]);
+        let val = h.call(1.5).unwrap();
+        let single = h.call_many(&[1.5]).unwrap();
         assert_eq!(single.shape(), &[1, 2]);
         for j in 0..2 {
             assert!((single[[0, j]] - val[j]).abs() < 1e-14);
@@ -252,65 +250,77 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "outside the interpolation range")]
     fn call_before_range() {
         let h = make_interpolant();
-        let _ = h.call(-0.1);
+        assert!(matches!(
+            h.call(-0.1),
+            Err(SolverError::InterpolationOutOfRange)
+        ));
     }
 
     #[test]
-    #[should_panic(expected = "outside the interpolation range")]
     fn call_after_range() {
         let h = make_interpolant();
-        let _ = h.call(3.1);
+        assert!(matches!(
+            h.call(3.1),
+            Err(SolverError::InterpolationOutOfRange)
+        ));
     }
 
     #[test]
-    #[should_panic(expected = "outside the interpolation range")]
     fn call_many_out_of_range() {
         let h = make_interpolant();
-        let _ = h.call_many(&[1.0, 3.5]);
+        assert!(matches!(
+            h.call_many(&[1.0, 3.5]),
+            Err(SolverError::InterpolationOutOfRange)
+        ));
     }
 
     #[test]
-    #[should_panic(expected = "at least 2 elements")]
     fn empty_time_points() {
         let t: Box<[f64]> = Box::new([]);
         let y = Array2::zeros((0, 2));
         let dy = Array2::zeros((0, 2));
-        let _ = HermiteInterpolant::new(t, y, dy);
+        assert!(matches!(
+            HermiteInterpolant::new(t, y, dy),
+            Err(SolverError::InvalidInterpolationData)
+        ));
     }
 
     #[test]
-    #[should_panic(expected = "at least 2 elements")]
     fn single_time_point() {
         let t: Box<[f64]> = Box::new([0.0]);
         let y = array![[1.0, 2.0]];
         let dy = array![[3.0, 4.0]];
-        let _ = HermiteInterpolant::new(t, y, dy);
+        assert!(matches!(
+            HermiteInterpolant::new(t, y, dy),
+            Err(SolverError::InvalidInterpolationData)
+        ));
     }
 
     #[test]
-    #[should_panic(expected = "strictly increasing")]
     fn non_strictly_increasing() {
         let t: Box<[f64]> = Box::new([0.0, 1.0, 1.0, 2.0]);
         let y = Array2::zeros((4, 2));
         let dy = Array2::zeros((4, 2));
-        let _ = HermiteInterpolant::new(t, y, dy);
+        assert!(matches!(
+            HermiteInterpolant::new(t, y, dy),
+            Err(SolverError::InvalidInterpolationData)
+        ));
     }
 
     #[test]
     fn empty_call_many() {
         let h = make_interpolant();
-        let result = h.call_many(&[]);
+        let result = h.call_many(&[]).unwrap();
         assert_eq!(result.shape(), &[0, 2]);
     }
 
     #[test]
     fn derivative_continuity() {
         let h = make_interpolant();
-        let val_mid = h.call(0.9999);
-        let val_next = h.call(1.0001);
+        let val_mid = h.call(0.9999).unwrap();
+        let val_next = h.call(1.0001).unwrap();
         // The interpolant is C¹, so values near the boundary should be close.
         for j in 0..2 {
             let diff = (val_mid[j] - val_next[j]).abs();

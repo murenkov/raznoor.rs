@@ -8,7 +8,7 @@
 use ndarray::{Array1, array};
 use raznoor::{
     AdaptiveODESolver, BACKWARD_EULER, BDF2, BDF4, CRANK_NICOLSON, DORMAND_PRINCE45,
-    FixedStepODESolver, ODEProblem, ODESolver, RUNGE_KUTTA_4,
+    FixedStepODESolver, ODEProblem, ODESolver, RUNGE_KUTTA_4, SolverError,
 };
 
 fn linear_rhs() -> fn(f64, &Array1<f64>) -> Array1<f64> {
@@ -213,7 +213,7 @@ fn bdf2_oscillator_off_grid() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn no_derivative_returns_none() {
+fn no_derivative_returns_err() {
     let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
         .unwrap()
@@ -221,7 +221,10 @@ fn no_derivative_returns_none() {
         .solve(&prob)
         .unwrap();
     assert!(sol.du.is_none());
-    assert!(sol.interpolate(0.5).is_none());
+    assert!(matches!(
+        sol.interpolate(0.5),
+        Err(SolverError::MissingDerivativeData)
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -229,7 +232,6 @@ fn no_derivative_returns_none() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[should_panic(expected = "outside the interpolation range")]
 fn interpolate_before_range() {
     let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
@@ -237,11 +239,13 @@ fn interpolate_before_range() {
         .with_store_derivatives(true)
         .solve(&prob)
         .unwrap();
-    let _ = sol.interpolate(-1.0);
+    assert!(matches!(
+        sol.interpolate(-1.0),
+        Err(SolverError::InterpolationOutOfRange)
+    ));
 }
 
 #[test]
-#[should_panic(expected = "outside the interpolation range")]
 fn interpolate_after_range() {
     let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
@@ -249,7 +253,10 @@ fn interpolate_after_range() {
         .with_store_derivatives(true)
         .solve(&prob)
         .unwrap();
-    let _ = sol.interpolate(3.0);
+    assert!(matches!(
+        sol.interpolate(3.0),
+        Err(SolverError::InterpolationOutOfRange)
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -441,12 +448,15 @@ fn interpolate_many_empty() {
 }
 
 #[test]
-fn interpolate_many_no_du_returns_none() {
+fn interpolate_many_no_du_returns_err() {
     let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
         .unwrap()
         .with_store_derivatives(false)
         .solve(&prob)
         .unwrap();
-    assert!(sol.interpolate_many(&[0.5]).is_none());
+    assert!(matches!(
+        sol.interpolate_many(&[0.5]),
+        Err(SolverError::MissingDerivativeData)
+    ));
 }

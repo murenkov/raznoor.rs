@@ -194,24 +194,27 @@ impl<T> ODESolution<T> {
     /// Returns `None` if derivatives were not stored (i.e. [`du`](ODESolution::du) is `None`)
     /// or if there are fewer than 2 time points (insufficient for interpolation).
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `t` is outside the range `[t[0], t[n-1]]`.
-    pub fn interpolate(&self, t: T) -> Option<Array1<T>>
+    /// Returns [`SolverError::InterpolationOutOfRange`] if `t` is outside the range
+    /// `[t[0], t[n-1]]`.
+    ///
+    /// Returns [`SolverError::MissingDerivativeData`] if derivative data was not stored
+    /// during integration or if there are fewer than 2 time points.
+    pub fn interpolate(&self, t: T) -> Result<Array1<T>, SolverError>
     where
         T: Float + FromPrimitive + ndarray::ScalarOperand + Display,
     {
-        let du = self.du.as_ref()?;
+        let du = self.du.as_ref().ok_or(SolverError::MissingDerivativeData)?;
         if self.t.len() < 2 {
-            return None;
+            return Err(SolverError::MissingDerivativeData);
         }
 
         let t0 = self.t[0];
         let t_last = self.t[self.t.len() - 1];
-        assert!(
-            !(t < t0 || t > t_last),
-            "t = {t} is outside the interpolation range [{t0}, {t_last}]"
-        );
+        if t < t0 || t > t_last {
+            return Err(SolverError::InterpolationOutOfRange);
+        }
 
         let i = self
             .t
@@ -219,28 +222,30 @@ impl<T> ODESolution<T> {
             .saturating_sub(1)
             .min(self.t.len() - 2);
 
-        Some(self.hermite_eval(t, i, du))
+        Ok(self.hermite_eval(t, i, du))
     }
 
     /// Evaluate the solution at multiple (sorted) time points using cubic Hermite interpolation.
     ///
-    /// Returns `None` if derivatives were not stored or if there are fewer than 2 time points.
-    ///
     /// `ts` must be sorted in non-decreasing order for an O(n + m) two‑pointer walk.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if any `t` in `ts` is outside the interpolation range.
-    pub fn interpolate_many(&self, ts: &[T]) -> Option<Array2<T>>
+    /// Returns [`SolverError::InterpolationOutOfRange`] if any `t` in `ts` is outside
+    /// the interpolation range.
+    ///
+    /// Returns [`SolverError::MissingDerivativeData`] if derivative data was not stored
+    /// during integration or if there are fewer than 2 time points.
+    pub fn interpolate_many(&self, ts: &[T]) -> Result<Array2<T>, SolverError>
     where
         T: Float + FromPrimitive + ndarray::ScalarOperand + Display,
     {
-        let du = self.du.as_ref()?;
+        let du = self.du.as_ref().ok_or(SolverError::MissingDerivativeData)?;
         if self.t.len() < 2 {
-            return None;
+            return Err(SolverError::MissingDerivativeData);
         }
         if ts.is_empty() {
-            return Some(Array2::zeros((0, self.u.ncols())));
+            return Ok(Array2::zeros((0, self.u.ncols())));
         }
 
         let t0 = self.t[0];
@@ -250,10 +255,9 @@ impl<T> ODESolution<T> {
         let mut interval: usize = 0;
 
         for (row, &t_val) in ts.iter().enumerate() {
-            assert!(
-                !(t_val < t0 || t_val > t_last),
-                "t = {t_val} is outside the interpolation range [{t0}, {t_last}]"
-            );
+            if t_val < t0 || t_val > t_last {
+                return Err(SolverError::InterpolationOutOfRange);
+            }
 
             while interval + 1 < self.t.len() - 1 && t_val >= self.t[interval + 1] {
                 interval += 1;
@@ -266,7 +270,7 @@ impl<T> ODESolution<T> {
             result.row_mut(row).assign(&val);
         }
 
-        Some(result)
+        Ok(result)
     }
 }
 
@@ -298,6 +302,14 @@ pub enum SolverError {
     EventError,
     /// The Newton solver for implicit stages did not converge.
     NewtonConvergenceError,
+    /// The requested interpolation time is outside the solution range.
+    InterpolationOutOfRange,
+    /// Derivative data was not stored during integration, so interpolation is
+    /// not available.
+    MissingDerivativeData,
+    /// The data provided to construct an interpolant is invalid (e.g.
+    /// inconsistent lengths, too few points, or non-increasing time values).
+    InvalidInterpolationData,
 }
 
 impl std::fmt::Display for SolverError {
@@ -320,6 +332,15 @@ impl std::fmt::Display for SolverError {
                     f,
                     "Newton iteration did not converge for implicit RK stages"
                 )
+            }
+            Self::InterpolationOutOfRange => {
+                write!(f, "t is outside the interpolation range")
+            }
+            Self::MissingDerivativeData => {
+                write!(f, "derivative data not available for interpolation")
+            }
+            Self::InvalidInterpolationData => {
+                write!(f, "invalid interpolation data")
             }
         }
     }
