@@ -113,9 +113,9 @@ where
             let t_prev = ts[i];
             let f = &prob.f;
 
-            let u_new = self
-                .method
-                .step_with_scratch(f, t_prev, dt, &u_curr, &mut scratch);
+            let (u_new, u_new_du) =
+                self.method
+                    .step_with_scratch(f, t_prev, dt, &u_curr, &mut scratch);
 
             if prob.events.is_empty() {
                 u.row_mut(i + 1).assign(&u_new);
@@ -156,8 +156,7 @@ where
 
             // Store derivative at the accepted state if enabled
             if let Some(ref mut data) = du_data {
-                let du = f(ts[i + 1], &u_curr);
-                data.extend(du.iter().copied());
+                data.extend(u_new_du.iter().copied());
             }
         }
 

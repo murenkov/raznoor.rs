@@ -250,7 +250,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ImplicitRungeKuttaMethod<f64> {
         dt: T,
         u: &Array1<T>,
         scratch: &mut Self::Scratch,
-    ) -> Array1<T> {
+    ) -> (Array1<T>, Array1<T>) {
         // Simplified Newton iteration for the stage equations.
         // The stage equations are:
         //   k_i = f(t + c_i·dt,  u + dt·Σ_j a_ij·k_j)
@@ -359,7 +359,8 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ImplicitRungeKuttaMethod<f64> {
         ndarray::Zip::from(&mut du)
             .and(u)
             .for_each(|d, &uv| *d = uv + *d);
-        du
+        let du_new = f(t + dt, &du);
+        (du, du_new)
     }
 }
 
