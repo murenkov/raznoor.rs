@@ -226,7 +226,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
         dt: T,
         u: &Array1<T>,
         scratch: &mut Self::Scratch,
-    ) -> Array1<T> {
+    ) -> (Array1<T>, Array1<T>) {
         let target_order = self.order.clamp(1, BDF_MAX_ORDER);
         let n_vars = u.len();
 
@@ -343,6 +343,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
         scratch.history.push(u.clone());
         scratch.steps_taken += 1;
 
-        u_new
+        let du_new = f(t + dt, &u_new);
+        (u_new, du_new)
     }
 }

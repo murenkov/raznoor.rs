@@ -178,7 +178,7 @@ where
             let t_prev = t;
             let f = &prob.f;
 
-            let (u_new, delta) = self.method.step_with_error_with_scratch(
+            let (u_new, u_new_du, delta) = self.method.step_with_error_with_scratch(
                 f,
                 t_prev,
                 dt_adaptive,
@@ -223,8 +223,7 @@ where
                 ts.push(t);
                 us_data.extend(u_curr.iter().copied());
                 if let Some(ref mut data) = du_data {
-                    let du = f(t, &u_curr);
-                    data.extend(du.iter().copied());
+                    data.extend(u_new_du.iter().copied());
                 }
 
                 if is_terminal {

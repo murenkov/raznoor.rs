@@ -21,6 +21,7 @@ impl<T: Float, M: ODEMethod<T>, F: RhsODEFn<T>> StepForward<T> for MethodStepper
     fn step(&mut self, t: T, dt: T, u: &Array1<T>) -> Array1<T> {
         self.method
             .step_with_scratch(self.f, t, dt, u, self.scratch)
+            .0
     }
 }
 

@@ -295,7 +295,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
         dt: T,
         u: &Array1<T>,
         scratch: &mut Self::Scratch,
-    ) -> Array1<T> {
+    ) -> (Array1<T>, Array1<T>) {
         compute_stages(f, t, dt, u, self, scratch);
         weighted_sum_into(&scratch.ks, self.b, &mut scratch.du);
         let mut out = Array1::zeros(u.len());
@@ -303,7 +303,8 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
             .and(u)
             .and(&scratch.du)
             .for_each(|r, &uv, &duv| *r = uv + dt * duv);
-        out
+        let du_new = f(t + dt, &out);
+        (out, du_new)
     }
 
     fn step_with_error_with_scratch<F: RhsODEFn<T>>(
@@ -313,7 +314,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
         dt: T,
         u: &Array1<T>,
         scratch: &mut Self::Scratch,
-    ) -> (Array1<T>, Array1<T>) {
+    ) -> (Array1<T>, Array1<T>, Array1<T>) {
         compute_stages(f, t, dt, u, self, scratch);
         weighted_sum_into(&scratch.ks, self.b, &mut scratch.du);
         let b_diff: Vec<f64> = self
@@ -328,7 +329,8 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
             .and(u)
             .and(&scratch.du)
             .for_each(|r, &uv, &duv| *r = uv + dt * duv);
-        (u_new, delta)
+        let du_new = f(t + dt, &u_new);
+        (u_new, du_new, delta)
     }
 
     fn supports_adaptive(&self) -> bool {
