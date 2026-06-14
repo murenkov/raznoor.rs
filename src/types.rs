@@ -289,7 +289,7 @@ impl<T> ODESolution<T> {
 /// let result = AdaptiveODESolver::new(RUNGE_KUTTA_1, 0.01, 1e-4, 1e-4).and_then(|s| s.solve(&prob));
 /// assert!(matches!(result, Err(SolverError::AdaptiveNotSupported)));
 /// ```
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 #[non_exhaustive]
 pub enum SolverError {
     /// Adaptive step-size control is not supported for the given algorithm.
@@ -310,6 +310,12 @@ pub enum SolverError {
     /// The data provided to construct an interpolant is invalid (e.g.
     /// inconsistent lengths, too few points, or non-increasing time values).
     InvalidInterpolationData,
+}
+
+impl PartialEq for SolverError {
+    fn eq(&self, other: &Self) -> bool {
+        core::mem::discriminant(self) == core::mem::discriminant(other)
+    }
 }
 
 impl std::fmt::Display for SolverError {
