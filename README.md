@@ -87,9 +87,11 @@ impl ODEMethod<f64> for MyCustomMethod {
     fn prepare(&self, _n_vars: usize) -> Self::Scratch { () }
     fn step_with_scratch<F: RhsODEFn<f64>>(
         &self, f: &F, t: f64, dt: f64, u: &Array1<f64>, _scratch: &mut Self::Scratch,
-    ) -> Array1<f64> {
+    ) -> (Array1<f64>, Array1<f64>) {
         let k = f(t, u);
-        ndarray::Zip::from(u).and(&k).map_collect(|&uv, &kv| uv + dt * kv)
+        let u_new = ndarray::Zip::from(u).and(&k).map_collect(|&uv, &kv| uv + dt * kv);
+        let du_new = f(t + dt, &u_new);
+        (u_new, du_new)
     }
 }
 
