@@ -61,11 +61,15 @@ pub(crate) mod linalg;
 /// Fixed-step and adaptive ODE solvers.
 mod solver;
 
+/// Dense output (continuous interpolation) support.
+pub mod dense;
+
 /// Parallel batched ODE solves using rayon.
 #[cfg(feature = "parallel")]
 pub mod batch;
 
 pub use bdf::{BDF1, BDF2, BDF3, BDF4, BDF5, BDF6, BDFMethod, BDFScratch};
+pub use dense::{DenseOutput, HermiteInterpolant};
 pub use erk::{
     DORMAND_PRINCE45, ExplicitRKScratch, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
     RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
