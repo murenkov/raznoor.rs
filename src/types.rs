@@ -1,5 +1,7 @@
 use ndarray::{Array1, Array2};
 use num_traits::Float;
+use num_traits::FromPrimitive;
+use std::fmt::Display;
 use std::sync::Arc;
 
 /// Trait alias for the ODE right-hand side function `f(t, u)`.
@@ -106,6 +108,8 @@ pub struct EventRecord<T> {
 /// * `t` — Time points at which the solution was evaluated.
 /// * `u` — State trajectories as a matrix of shape `(n_times, n_vars)` — each row is one
 ///   time step (all variable values at that time).
+/// * `du` — Derivative at each time point (same shape as `u`), present only when the solver
+///   was configured to store derivatives. Enables dense output via [`interpolate`](ODESolution::interpolate).
 /// * `events` — Events that fired during integration (empty if none).
 #[derive(Debug, Clone)]
 #[non_exhaustive]
@@ -114,6 +118,9 @@ pub struct ODESolution<T> {
     pub t: Box<[T]>,
     /// State trajectories as a matrix of shape `(n_times, n_vars)`.
     pub u: Array2<T>,
+    /// Derivative at each time point, same shape as `u`.
+    /// Present only when the solver was configured to store derivatives.
+    pub du: Option<Array2<T>>,
     /// Events that fired during integration.
     pub events: Vec<EventRecord<T>>,
 }
@@ -125,6 +132,7 @@ impl<T> ODESolution<T> {
         Self {
             t,
             u,
+            du: None,
             events: Vec::new(),
         }
     }
@@ -132,7 +140,133 @@ impl<T> ODESolution<T> {
     /// Create a new ODE solution from time points, state trajectories, and event records.
     #[must_use]
     pub const fn with_events(t: Box<[T]>, u: Array2<T>, events: Vec<EventRecord<T>>) -> Self {
-        Self { t, u, events }
+        Self {
+            t,
+            u,
+            du: None,
+            events,
+        }
+    }
+
+    /// Set the derivative array, enabling dense output via [`interpolate`](ODESolution::interpolate).
+    ///
+    /// `du` must have the same shape as `u` (see [`ODESolution::u`]): `(n_times, n_vars)`.
+    #[must_use]
+    pub fn with_du(mut self, du: Array2<T>) -> Self {
+        self.du = Some(du);
+        self
+    }
+
+    /// Evaluate the cubic Hermite interpolant on interval `i`.
+    /// The caller must ensure `i < t.len() - 1`.
+    fn hermite_eval(&self, t_val: T, i: usize, du: &Array2<T>) -> Array1<T>
+    where
+        T: Float + FromPrimitive + ndarray::ScalarOperand,
+    {
+        let t_i = self.t[i];
+        let t_ip1 = self.t[i + 1];
+        let h = t_ip1 - t_i;
+
+        if h.is_zero() || t_val <= t_i {
+            return self.u.row(i).to_owned();
+        }
+        if t_val >= t_ip1 {
+            return self.u.row(i + 1).to_owned();
+        }
+
+        let s = (t_val - t_i) / h;
+        let s2 = s * s;
+        let s3 = s2 * s;
+
+        let c1 = T::one() - T::from_f64(3.0).unwrap() * s2 + T::from_f64(2.0).unwrap() * s3;
+        let c2 = T::from_f64(3.0).unwrap() * s2 - T::from_f64(2.0).unwrap() * s3;
+        let c3 = s - T::from_f64(2.0).unwrap() * s2 + s3;
+        let c4 = s3 - s2;
+
+        &self.u.row(i) * c1
+            + &self.u.row(i + 1) * c2
+            + &du.row(i) * (h * c3)
+            + &du.row(i + 1) * (h * c4)
+    }
+
+    /// Evaluate the solution at an arbitrary time `t` using cubic Hermite interpolation.
+    ///
+    /// Returns `None` if derivatives were not stored (i.e. [`du`](ODESolution::du) is `None`)
+    /// or if there are fewer than 2 time points (insufficient for interpolation).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `t` is outside the range `[t[0], t[n-1]]`.
+    pub fn interpolate(&self, t: T) -> Option<Array1<T>>
+    where
+        T: Float + FromPrimitive + ndarray::ScalarOperand + Display,
+    {
+        let du = self.du.as_ref()?;
+        if self.t.len() < 2 {
+            return None;
+        }
+
+        let t0 = self.t[0];
+        let t_last = self.t[self.t.len() - 1];
+        assert!(
+            !(t < t0 || t > t_last),
+            "t = {t} is outside the interpolation range [{t0}, {t_last}]"
+        );
+
+        let i = self
+            .t
+            .partition_point(|&ti| ti <= t)
+            .saturating_sub(1)
+            .min(self.t.len() - 2);
+
+        Some(self.hermite_eval(t, i, du))
+    }
+
+    /// Evaluate the solution at multiple (sorted) time points using cubic Hermite interpolation.
+    ///
+    /// Returns `None` if derivatives were not stored or if there are fewer than 2 time points.
+    ///
+    /// `ts` must be sorted in non-decreasing order for an O(n + m) two‑pointer walk.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any `t` in `ts` is outside the interpolation range.
+    pub fn interpolate_many(&self, ts: &[T]) -> Option<Array2<T>>
+    where
+        T: Float + FromPrimitive + ndarray::ScalarOperand + Display,
+    {
+        let du = self.du.as_ref()?;
+        if self.t.len() < 2 {
+            return None;
+        }
+        if ts.is_empty() {
+            return Some(Array2::zeros((0, self.u.ncols())));
+        }
+
+        let t0 = self.t[0];
+        let t_last = self.t[self.t.len() - 1];
+
+        let mut result = Array2::zeros((ts.len(), self.u.ncols()));
+        let mut interval: usize = 0;
+
+        for (row, &t_val) in ts.iter().enumerate() {
+            assert!(
+                !(t_val < t0 || t_val > t_last),
+                "t = {t_val} is outside the interpolation range [{t0}, {t_last}]"
+            );
+
+            while interval + 1 < self.t.len() - 1 && t_val >= self.t[interval + 1] {
+                interval += 1;
+            }
+            while interval > 0 && t_val < self.t[interval] {
+                interval -= 1;
+            }
+
+            let val = self.hermite_eval(t_val, interval, du);
+            result.row_mut(row).assign(&val);
+        }
+
+        Some(result)
     }
 }
 

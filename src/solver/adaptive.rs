@@ -45,6 +45,7 @@ pub struct AdaptiveODESolver<M, T> {
     atol: T,
     rtol: T,
     max_steps: usize,
+    store_derivatives: bool,
 }
 
 impl<M: ODEMethod<T>, T: Float> AdaptiveODESolver<M, T> {
@@ -67,7 +68,20 @@ impl<M: ODEMethod<T>, T: Float> AdaptiveODESolver<M, T> {
             atol,
             rtol,
             max_steps: MAX_STEPS,
+            store_derivatives: false,
         })
+    }
+
+    /// Enable or disable storing of derivatives (`du`) at each accepted step.
+    ///
+    /// When enabled, the returned [`ODESolution`](crate::types::ODESolution) will contain
+    /// derivative data that enables dense output via [`interpolate`](crate::types::ODESolution::interpolate).
+    ///
+    /// Default is `false`.
+    #[must_use]
+    pub const fn with_store_derivatives(mut self, enable: bool) -> Self {
+        self.store_derivatives = enable;
+        self
     }
 
     /// Return the embedded method pair.
@@ -136,6 +150,7 @@ where
 
         let mut ts: Vec<T> = Vec::new();
         let mut us_data: Vec<T> = Vec::new();
+        let mut du_data: Option<Vec<T>> = self.store_derivatives.then(|| Vec::new());
 
         let mut t = t0;
         let mut u_curr = prob.u0.clone();
@@ -144,6 +159,10 @@ where
 
         ts.push(t);
         us_data.extend(u_curr.iter().copied());
+        if let Some(ref mut data) = du_data {
+            let f0 = (prob.f)(t, &u_curr);
+            data.extend(f0.iter().copied());
+        }
 
         let mut scratch = self.method.prepare(n);
 
@@ -203,6 +222,10 @@ where
                 u_curr = u_new_val;
                 ts.push(t);
                 us_data.extend(u_curr.iter().copied());
+                if let Some(ref mut data) = du_data {
+                    let du = f(t, &u_curr);
+                    data.extend(du.iter().copied());
+                }
 
                 if is_terminal {
                     break;
@@ -215,9 +238,15 @@ where
         let u_arr =
             Array2::from_shape_vec((n_times, n), us_data).expect("state data length matches shape");
 
+        let du = du_data.map(|data| {
+            Array2::from_shape_vec((n_times, n), data)
+                .expect("derivative data length matches shape")
+        });
+
         Ok(ODESolution {
             t: ts.into(),
             u: u_arr,
+            du,
             events,
         })
     }

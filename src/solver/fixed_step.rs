@@ -36,6 +36,7 @@ use crate::types::{EventRecord, ODEProblem, ODESolution, RhsODEFn, SolverError};
 pub struct FixedStepODESolver<M, T> {
     method: M,
     dt: T,
+    store_derivatives: bool,
 }
 
 impl<M, T: Float> FixedStepODESolver<M, T> {
@@ -47,7 +48,23 @@ impl<M, T: Float> FixedStepODESolver<M, T> {
         if dt <= T::zero() {
             return Err(SolverError::InvalidStepSize);
         }
-        Ok(Self { method, dt })
+        Ok(Self {
+            method,
+            dt,
+            store_derivatives: false,
+        })
+    }
+
+    /// Enable or disable storing of derivatives (`du`) at each accepted step.
+    ///
+    /// When enabled, the returned [`ODESolution`](crate::types::ODESolution) will contain
+    /// derivative data that enables dense output via [`interpolate`](crate::types::ODESolution::interpolate).
+    ///
+    /// Default is `false`.
+    #[must_use]
+    pub const fn with_store_derivatives(mut self, enable: bool) -> Self {
+        self.store_derivatives = enable;
+        self
     }
 
     /// Return the integration method.
@@ -77,6 +94,14 @@ where
 
         let mut u = Array2::<T>::zeros((n_steps, n));
         u.row_mut(0).assign(&prob.u0);
+
+        let mut du_data: Option<Vec<T>> = self.store_derivatives.then(|| {
+            let mut data = Vec::with_capacity(n_steps * n);
+            // Evaluate derivative at the initial condition
+            let f0 = (prob.f)(ts[0], &prob.u0);
+            data.extend(f0.iter().copied());
+            data
+        });
 
         let mut scratch = self.method.prepare(n);
         let mut u_curr = prob.u0.clone();
@@ -128,16 +153,31 @@ where
                     }
                 }
             }
+
+            // Store derivative at the accepted state if enabled
+            if let Some(ref mut data) = du_data {
+                let du = f(ts[i + 1], &u_curr);
+                data.extend(du.iter().copied());
+            }
         }
 
         if final_step < n_steps {
             ts.truncate(final_step);
             u = u.slice(ndarray::s![..final_step, ..]).to_owned();
+            if let Some(ref mut data) = du_data {
+                data.truncate(final_step * n);
+            }
         }
+
+        let du = du_data.map(|data| {
+            Array2::from_shape_vec((ts.len(), n), data)
+                .expect("derivative data length matches shape")
+        });
 
         Ok(ODESolution {
             t: ts.into(),
             u,
+            du,
             events,
         })
     }
