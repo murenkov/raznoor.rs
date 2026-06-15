@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781434145348,
+  "lastUpdate": 1781540751376,
   "repoUrl": "https://github.com/murenkov/raznoor.rs",
   "entries": {
     "Benchmark": [
@@ -27435,6 +27435,330 @@ window.BENCHMARK_DATA = {
             "name": "precision/RK4_f64",
             "value": 151628,
             "range": "± 854",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ymurenkov@yandex.ru",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "committer": {
+            "email": "17390550+murenkov@users.noreply.github.com",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "distinct": true,
+          "id": "35a2c965e047cee5f4e4cb5833d7efe1baf59c86",
+          "message": "refactor: consolidate duplicated Hermite interpolation into a single shared function\n\nMove the cubic Hermite interpolation arithmetic from `HermiteInterpolant::interpolate`\nand `ODESolution::hermite_eval` into a shared `pub(crate)` associated function\n`HermiteInterpolant::eval_cubic_hermite`. Both callers now delegate to it with\nborrowed data, eliminating the code duplication.\n\n`ODESolution` methods (`interpolate`, `interpolate_many`) remain functionally\nidentical -- they now delegate through `hermite_eval` which calls\n`HermiteInterpolant::eval_cubic_hermite` with `&self.t`, `&self.u`, and `du`.\nThe private `HermiteInterpolant::interpolate` likewise delegates with its owned\n`&self.t`, `&self.y`, `&self.dy`.",
+          "timestamp": "2026-06-15T19:15:41+03:00",
+          "tree_id": "c2f12a262860224fe014dcc717519080128e483e",
+          "url": "https://github.com/murenkov/raznoor.rs/commit/35a2c965e047cee5f4e4cb5833d7efe1baf59c86"
+        },
+        "date": 1781540751087,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "fixed_step/RK1_f32_coarse",
+            "value": 7507,
+            "range": "± 264",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_coarse",
+            "value": 8143,
+            "range": "± 41",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f32_fine",
+            "value": 77406,
+            "range": "± 1966",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_fine",
+            "value": 78342,
+            "range": "± 1084",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_coarse",
+            "value": 10412,
+            "range": "± 56",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_coarse",
+            "value": 10597,
+            "range": "± 43",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_fine",
+            "value": 100572,
+            "range": "± 239",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_fine",
+            "value": 102571,
+            "range": "± 1975",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_coarse",
+            "value": 12750,
+            "range": "± 56",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_coarse",
+            "value": 12927,
+            "range": "± 318",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_fine",
+            "value": 124474,
+            "range": "± 2038",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_fine",
+            "value": 125929,
+            "range": "± 1011",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_coarse",
+            "value": 15201,
+            "range": "± 261",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_coarse",
+            "value": 15346,
+            "range": "± 130",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_fine",
+            "value": 148373,
+            "range": "± 3634",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_fine",
+            "value": 148974,
+            "range": "± 9238",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_coarse",
+            "value": 21532,
+            "range": "± 73",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_coarse",
+            "value": 21623,
+            "range": "± 78",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_fine",
+            "value": 211847,
+            "range": "± 8304",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_fine",
+            "value": 211989,
+            "range": "± 1439",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_coarse",
+            "value": 21827,
+            "range": "± 112",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_coarse",
+            "value": 21873,
+            "range": "± 211",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_fine",
+            "value": 214556,
+            "range": "± 1800",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_fine",
+            "value": 214878,
+            "range": "± 10136",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_coarse",
+            "value": 25115,
+            "range": "± 814",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_coarse",
+            "value": 25015,
+            "range": "± 74",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_fine",
+            "value": 247372,
+            "range": "± 673",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_fine",
+            "value": 246514,
+            "range": "± 3815",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f32",
+            "value": 6510,
+            "range": "± 32",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f64",
+            "value": 40074,
+            "range": "± 597",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f32",
+            "value": 6545,
+            "range": "± 117",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f64",
+            "value": 40340,
+            "range": "± 400",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK1_fixed",
+            "value": 899532,
+            "range": "± 5243",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK2_fixed",
+            "value": 1177638,
+            "range": "± 26499",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK3_fixed",
+            "value": 1471105,
+            "range": "± 21230",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK4_fixed",
+            "value": 1755795,
+            "range": "± 75148",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK5_fixed",
+            "value": 2543136,
+            "range": "± 57235",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_fixed",
+            "value": 2584317,
+            "range": "± 53341",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_fixed",
+            "value": 2976155,
+            "range": "± 71132",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_adaptive",
+            "value": 160212,
+            "range": "± 3569",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_adaptive",
+            "value": 162391,
+            "range": "± 3032",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK1_100k",
+            "value": 13279259,
+            "range": "± 55407",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK2_100k",
+            "value": 18220480,
+            "range": "± 352583",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK3_100k",
+            "value": 23050496,
+            "range": "± 357140",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK4_100k",
+            "value": 28298623,
+            "range": "± 558059",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK5_100k",
+            "value": 40872661,
+            "range": "± 718349",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/Fehlberg45_100k",
+            "value": 40911316,
+            "range": "± 637585",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/DP45_100k",
+            "value": 46823943,
+            "range": "± 613078",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f32",
+            "value": 148504,
+            "range": "± 3731",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f64",
+            "value": 149129,
+            "range": "± 796",
             "unit": "ns/iter"
           }
         ]
