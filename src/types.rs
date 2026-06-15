@@ -4,6 +4,8 @@ use num_traits::FromPrimitive;
 use std::fmt::Display;
 use std::sync::Arc;
 
+use crate::dense::HermiteInterpolant;
+
 /// Trait alias for the ODE right-hand side function `f(t, u)`.
 ///
 /// Defines the signature `f(t, u) -> u'` for a system of ODEs where `u` is the
@@ -163,30 +165,7 @@ impl<T> ODESolution<T> {
     where
         T: Float + FromPrimitive + ndarray::ScalarOperand,
     {
-        let t_i = self.t[i];
-        let t_ip1 = self.t[i + 1];
-        let h = t_ip1 - t_i;
-
-        if h.is_zero() || t_val <= t_i {
-            return self.u.row(i).to_owned();
-        }
-        if t_val >= t_ip1 {
-            return self.u.row(i + 1).to_owned();
-        }
-
-        let s = (t_val - t_i) / h;
-        let s2 = s * s;
-        let s3 = s2 * s;
-
-        let c1 = T::one() - T::from_f64(3.0).unwrap() * s2 + T::from_f64(2.0).unwrap() * s3;
-        let c2 = T::from_f64(3.0).unwrap() * s2 - T::from_f64(2.0).unwrap() * s3;
-        let c3 = s - T::from_f64(2.0).unwrap() * s2 + s3;
-        let c4 = s3 - s2;
-
-        &self.u.row(i) * c1
-            + &self.u.row(i + 1) * c2
-            + &du.row(i) * (h * c3)
-            + &du.row(i + 1) * (h * c4)
+        HermiteInterpolant::<T>::eval_cubic_hermite(&self.t, &self.u, du, t_val, i)
     }
 
     /// Evaluate the solution at an arbitrary time `t` using cubic Hermite interpolation.
