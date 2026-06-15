@@ -294,6 +294,25 @@ fn implicit_midpoint_exp_decay() {
     assert!((u_last - u_exact).abs() < 0.0001);
 }
 
+// --- Newton convergence failure / Picard fallback ---
+
+#[test]
+fn backward_euler_newton_fallback() {
+    let f = |_t: f64, u: &Array1<f64>| array![-u[0] * u[0] * u[0]];
+    let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
+    // Aggressive step size forces simplified Newton to stall (frozen Jacobian
+    // oscillates around the fixed point, never reaching 1e-12 in 15 iters).
+    let sol = FixedStepODESolver::new(BACKWARD_EULER, 1.0)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
+    assert!(
+        u_last.is_finite(),
+        "BE Newton fallback: u_last is not finite"
+    );
+}
+
 // --- IRK with f32 ---
 
 #[test]
