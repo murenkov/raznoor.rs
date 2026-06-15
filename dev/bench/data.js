@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1781547836186,
+  "lastUpdate": 1781548631295,
   "repoUrl": "https://github.com/murenkov/raznoor.rs",
   "entries": {
     "Benchmark": [
@@ -29379,6 +29379,330 @@ window.BENCHMARK_DATA = {
             "name": "precision/RK4_f64",
             "value": 152382,
             "range": "± 763",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ymurenkov@yandex.ru",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "committer": {
+            "email": "17390550+murenkov@users.noreply.github.com",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "distinct": true,
+          "id": "5af47090ee05a32992e6b396997cb0788cfc7774",
+          "message": "fix: shorten cargo keyword to meet crates.io limit\n\n`differential-equations` (24 chars) exceeds the 20-char limit for\ncrate keywords on crates.io. Replaced with `numerical-ode` (13 chars).",
+          "timestamp": "2026-06-15T21:27:03+03:00",
+          "tree_id": "921eac085cb9fc2f691d52c56d1d382f307e5100",
+          "url": "https://github.com/murenkov/raznoor.rs/commit/5af47090ee05a32992e6b396997cb0788cfc7774"
+        },
+        "date": 1781548630845,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "fixed_step/RK1_f32_coarse",
+            "value": 10579,
+            "range": "± 183",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_coarse",
+            "value": 10288,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f32_fine",
+            "value": 114100,
+            "range": "± 634",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_fine",
+            "value": 99841,
+            "range": "± 363",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_coarse",
+            "value": 13530,
+            "range": "± 294",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_coarse",
+            "value": 11867,
+            "range": "± 211",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_fine",
+            "value": 130528,
+            "range": "± 335",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_fine",
+            "value": 113535,
+            "range": "± 291",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_coarse",
+            "value": 16861,
+            "range": "± 65",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_coarse",
+            "value": 14435,
+            "range": "± 67",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_fine",
+            "value": 165477,
+            "range": "± 2847",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_fine",
+            "value": 139794,
+            "range": "± 1613",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_coarse",
+            "value": 19217,
+            "range": "± 85",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_coarse",
+            "value": 16669,
+            "range": "± 257",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_fine",
+            "value": 185222,
+            "range": "± 474",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_fine",
+            "value": 161878,
+            "range": "± 635",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_coarse",
+            "value": 25999,
+            "range": "± 116",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_coarse",
+            "value": 22925,
+            "range": "± 93",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_fine",
+            "value": 258415,
+            "range": "± 3557",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_fine",
+            "value": 223957,
+            "range": "± 3669",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_coarse",
+            "value": 26289,
+            "range": "± 132",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_coarse",
+            "value": 23180,
+            "range": "± 108",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_fine",
+            "value": 260090,
+            "range": "± 753",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_fine",
+            "value": 226577,
+            "range": "± 458",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_coarse",
+            "value": 29814,
+            "range": "± 323",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_coarse",
+            "value": 26618,
+            "range": "± 66",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_fine",
+            "value": 293568,
+            "range": "± 1103",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_fine",
+            "value": 259554,
+            "range": "± 611",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f32",
+            "value": 7225,
+            "range": "± 34",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f64",
+            "value": 44802,
+            "range": "± 291",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f32",
+            "value": 7469,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f64",
+            "value": 45824,
+            "range": "± 154",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK1_fixed",
+            "value": 1066978,
+            "range": "± 6627",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK2_fixed",
+            "value": 1379784,
+            "range": "± 82959",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK3_fixed",
+            "value": 1675626,
+            "range": "± 45163",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK4_fixed",
+            "value": 1991886,
+            "range": "± 4891",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK5_fixed",
+            "value": 2902504,
+            "range": "± 9433",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_fixed",
+            "value": 2863636,
+            "range": "± 9534",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_fixed",
+            "value": 3352422,
+            "range": "± 10513",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_adaptive",
+            "value": 181821,
+            "range": "± 1032",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_adaptive",
+            "value": 179394,
+            "range": "± 523",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK1_100k",
+            "value": 19207557,
+            "range": "± 41985",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK2_100k",
+            "value": 24073653,
+            "range": "± 55811",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK3_100k",
+            "value": 31310510,
+            "range": "± 64173",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK4_100k",
+            "value": 37932267,
+            "range": "± 115565",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK5_100k",
+            "value": 54774497,
+            "range": "± 209801",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/Fehlberg45_100k",
+            "value": 55107493,
+            "range": "± 121925",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/DP45_100k",
+            "value": 62610149,
+            "range": "± 323462",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f32",
+            "value": 172568,
+            "range": "± 683",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f64",
+            "value": 185483,
+            "range": "± 798",
             "unit": "ns/iter"
           }
         ]
