@@ -37,6 +37,8 @@ Additional checks in CI:
 
 - `cargo doc --no-deps`
 - `cargo deny check`
+- `cargo machete` (declared deps must be used)
+- `cargo +nightly udeps --lib --bins` (no unused transitive deps in production)
 
 All tests and checks must pass before a pull request is merged.
 

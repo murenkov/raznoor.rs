@@ -35,6 +35,16 @@ jobs:
       - name: Test
         run: cargo test ${{ matrix.features }}
 
+      # cargo-machete: checks that every declared [dependencies] entry is
+      # actually imported somewhere in the code. Lightweight, runs on stable.
+      - name: Install cargo-machete
+        if: ${{ matrix.features == '' }}
+        run: cargo install cargo-machete
+
+      - name: Check declared deps are used
+        if: ${{ matrix.features == '' }}
+        run: cargo machete
+
       - name: Install cargo-deny
         if: ${{ matrix.features == '' }}
         uses: taiki-e/install-action@v2
@@ -44,5 +54,28 @@ jobs:
       - name: Deny check
         if: ${{ matrix.features == '' }}
         run: cargo deny check
+
+  # cargo-udeps: detects truly unused transitive dependencies at the crate
+  # level. Only checks --lib --bins (excludes dev-targets like tests/benches)
+  # to avoid flagging dev-only transitive deps pulled by criterion/proptest.
+  # Requires nightly toolchain.
+  udeps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nightly toolchain
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Use cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-udeps
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-udeps
+
+      - name: Check unused dependencies
+        run: cargo +nightly udeps --lib --bins
 
 
