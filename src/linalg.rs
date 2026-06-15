@@ -115,3 +115,84 @@ pub fn lu_solve<T: Float>(lu: &Array2<T>, piv: &[usize], b: &mut Array1<T>) {
         b[i] = b[i] / lu[[i, i]];
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use ndarray::{Array1, Array2, array};
+    use proptest::prelude::*;
+
+    use super::*;
+
+    fn linear_scalar_rhs(_t: f64, u: &Array1<f64>) -> Array1<f64> {
+        array![2.0 * u[0]]
+    }
+
+    fn nonlinear_scalar_rhs(_t: f64, u: &Array1<f64>) -> Array1<f64> {
+        array![u[0].sin()]
+    }
+
+    fn linear_2x2_rhs(_t: f64, u: &Array1<f64>) -> Array1<f64> {
+        array![(-2.0f64).mul_add(u[0], u[1]), 2.0f64.mul_add(-u[1], u[0])]
+    }
+
+    fn nonlinear_2d_rhs(_t: f64, u: &Array1<f64>) -> Array1<f64> {
+        array![u[1], -u[0].sin() - u[1]]
+    }
+
+    fn max_abs_diff(a: &Array2<f64>, b: &Array2<f64>) -> f64 {
+        let mut max = 0.0;
+        for i in 0..a.nrows() {
+            for j in 0..a.ncols() {
+                let diff = (a[[i, j]] - b[[i, j]]).abs();
+                if diff > max {
+                    max = diff;
+                }
+            }
+        }
+        max
+    }
+
+    proptest! {
+        #[test]
+        fn jacobian_linear_scalar(u_val in -5.0f64..5.0f64, h in 1e-6f64..1e-3f64) {
+            let u = array![u_val];
+            let mut jac_fd = Array2::zeros((1, 1));
+            compute_jacobian(&mut jac_fd, &linear_scalar_rhs, 0.0, &u, h);
+            let jac_exact = array![[2.0]];
+            let diff = max_abs_diff(&jac_fd, &jac_exact);
+            prop_assert!(diff < 1e-8, "linear scalar: |J_fd - J_exact| = {} >= 1e-8", diff);
+        }
+
+        #[test]
+        fn jacobian_nonlinear_scalar(u_val in -5.0f64..5.0f64, h in 1e-6f64..1e-3f64) {
+            let u = array![u_val];
+            let mut jac_fd = Array2::zeros((1, 1));
+            compute_jacobian(&mut jac_fd, &nonlinear_scalar_rhs, 0.0, &u, h);
+            let jac_exact = array![[u[0].cos()]];
+            let diff = max_abs_diff(&jac_fd, &jac_exact);
+            let tol = h.mul_add(h, 1e-10);
+            prop_assert!(diff < tol, "nonlinear scalar: |J_fd - J_exact| = {} >= {} (h={})", diff, tol, h);
+        }
+
+        #[test]
+        fn jacobian_linear_2x2(u0 in -5.0f64..5.0f64, u1 in -5.0f64..5.0f64, h in 1e-6f64..1e-3f64) {
+            let u = array![u0, u1];
+            let mut jac_fd = Array2::zeros((2, 2));
+            compute_jacobian(&mut jac_fd, &linear_2x2_rhs, 0.0, &u, h);
+            let jac_exact = array![[-2.0, 1.0], [1.0, -2.0]];
+            let diff = max_abs_diff(&jac_fd, &jac_exact);
+            prop_assert!(diff < 1e-8, "linear 2x2: |J_fd - J_exact| = {} >= 1e-8", diff);
+        }
+
+        #[test]
+        fn jacobian_nonlinear_2d(u0 in -2.0f64..2.0f64, u1 in -2.0f64..2.0f64, h in 1e-6f64..1e-3f64) {
+            let u = array![u0, u1];
+            let mut jac_fd = Array2::zeros((2, 2));
+            compute_jacobian(&mut jac_fd, &nonlinear_2d_rhs, 0.0, &u, h);
+            let jac_exact = array![[0.0, 1.0], [-u[0].cos(), -1.0]];
+            let diff = max_abs_diff(&jac_fd, &jac_exact);
+            let tol = h.mul_add(h, 1e-10);
+            prop_assert!(diff < tol, "nonlinear 2d: |J_fd - J_exact| = {} >= {} (h={})", diff, tol, h);
+        }
+    }
+}
