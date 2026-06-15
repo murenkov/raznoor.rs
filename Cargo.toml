@@ -1,6 +1,6 @@
 [package]
 name = "raznoor"
-version = "0.2.0"
+version = "0.3.0"
 description = "Explicit Runge-Kutta ODE solver for scalar and system initial value problems with event detection"
 license = "MIT"
 repository = "https://github.com/murenkov/raznoor.rs"

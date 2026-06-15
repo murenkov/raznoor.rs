@@ -20,7 +20,7 @@ Add `raznoor` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-raznoor = "0.2.0"
+raznoor = "0.3.0"
 ```
 
 Example solving `u' = 2t + u` with `u(1) = 1` over `[1.0, 1.1]`:
