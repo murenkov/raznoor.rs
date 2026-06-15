@@ -32,6 +32,7 @@ use ndarray::Array1;
 use ndarray::Array2;
 use num_traits::Float;
 use num_traits::FromPrimitive;
+use std::collections::VecDeque;
 
 use crate::linalg;
 use crate::solver::ODEMethod;
@@ -175,7 +176,7 @@ pub const BDF6: BDFMethod<f64> = BDFMethod {
 pub struct BDFScratch<T> {
     /// Ring-buffer of past states (oldest first).
     /// Contains at most `max_history` entries (`target_order` − 1).
-    pub(crate) history: Vec<Array1<T>>,
+    pub(crate) history: VecDeque<Array1<T>>,
     /// Number of steps taken so far (used for startup order ramp-up).
     pub(crate) steps_taken: usize,
     /// Finite-difference Jacobian matrix `J = ∂f/∂u`, shape `(n, n)`.
@@ -209,7 +210,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
     fn prepare(&self, n_vars: usize) -> Self::Scratch {
         let order = self.order.clamp(1, BDF_MAX_ORDER);
         BDFScratch {
-            history: Vec::with_capacity(BDFScratch::<T>::max_history(order)),
+            history: VecDeque::with_capacity(BDFScratch::<T>::max_history(order)),
             steps_taken: 0,
             jac: Array2::zeros((n_vars, n_vars)),
             system: Array2::zeros((n_vars, n_vars)),
@@ -336,11 +337,10 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
         // Push the just-completed state (u, i.e. y_n) into the history.
         // max_history = target_order - 1, so the history holds at most
         // that many past states (the current state is always passed as `u`).
-        if scratch.history.len() > BDFScratch::<T>::max_history(target_order) {
-            // Drop oldest entry.
-            scratch.history.remove(0);
+        if scratch.history.len() >= BDFScratch::<T>::max_history(target_order) {
+            scratch.history.pop_front();
         }
-        scratch.history.push(u.clone());
+        scratch.history.push_back(u.clone());
         scratch.steps_taken += 1;
 
         let du_new = f(t + dt, &u_new);
