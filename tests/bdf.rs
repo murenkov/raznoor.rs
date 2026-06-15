@@ -397,6 +397,25 @@ fn bdf6_linear_f32() {
     }
 }
 
+// --- Newton convergence failure / Picard fallback ---
+
+#[test]
+fn bdf1_newton_fallback() {
+    let f: fn(f64, &Array1<f64>) -> Array1<f64> = |_t, u| array![-u[0] * u[0] * u[0]];
+    let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
+    // Aggressive step size forces simplified Newton to stall, triggering the
+    // Picard fixed-point fallback in the BDF step function.
+    let sol = FixedStepODESolver::new(BDF1, 1.0)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
+    assert!(
+        u_last.is_finite(),
+        "BDF1 Newton fallback: u_last is not finite"
+    );
+}
+
 // --- BDF1 == Backward Euler consistency ---
 
 #[test]
