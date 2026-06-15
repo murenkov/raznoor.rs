@@ -111,15 +111,30 @@ impl<T: Float + FromPrimitive + ndarray::ScalarOperand> HermiteInterpolant<T> {
 
     /// Evaluate the cubic Hermite interpolant on the `i`-th interval.
     fn interpolate(&self, t_val: T, i: usize) -> Array1<T> {
-        let t_i = self.t[i];
-        let t_ip1 = self.t[i + 1];
+        Self::eval_cubic_hermite(&self.t, &self.y, &self.dy, t_val, i)
+    }
+
+    /// Core cubic Hermite interpolation on a single interval.
+    ///
+    /// Operates on borrowed data so it can be shared by [`HermiteInterpolant`] and
+    /// [`crate::types::ODESolution`] without cloning or duplicating the arithmetic.
+    #[allow(clippy::many_single_char_names)]
+    pub(crate) fn eval_cubic_hermite(
+        t: &[T],
+        y: &Array2<T>,
+        dy: &Array2<T>,
+        t_val: T,
+        i: usize,
+    ) -> Array1<T> {
+        let t_i = t[i];
+        let t_ip1 = t[i + 1];
         let h = t_ip1 - t_i;
 
         if h.is_zero() || t_val <= t_i {
-            return self.y.row(i).to_owned();
+            return y.row(i).to_owned();
         }
         if t_val >= t_ip1 {
-            return self.y.row(i + 1).to_owned();
+            return y.row(i + 1).to_owned();
         }
 
         let s = (t_val - t_i) / h;
@@ -131,10 +146,7 @@ impl<T: Float + FromPrimitive + ndarray::ScalarOperand> HermiteInterpolant<T> {
         let c3 = s - T::from_f64(2.0).unwrap() * s2 + s3;
         let c4 = s3 - s2;
 
-        &self.y.row(i) * c1
-            + &self.y.row(i + 1) * c2
-            + &self.dy.row(i) * (h * c3)
-            + &self.dy.row(i + 1) * (h * c4)
+        &y.row(i) * c1 + &y.row(i + 1) * c2 + &dy.row(i) * (h * c3) + &dy.row(i + 1) * (h * c4)
     }
 }
 
