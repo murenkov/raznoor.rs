@@ -281,7 +281,9 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ImplicitRungeKuttaMethod<f64> {
         }
 
         // --- 2. Finite-difference Jacobian J at (t, u) ---
-        linalg::compute_jacobian(&mut scratch.jac, f, t, u);
+        let scale = u.iter().fold(T::one(), |m, &x| T::max(m, x.abs()));
+        let h = T::from_f64(1e-8).unwrap() * scale;
+        linalg::compute_jacobian(&mut scratch.jac, f, t, u, h);
 
         // --- 3. Build the system matrix M = I - dt · (A ⊗ J) ---
         build_system_matrix(method, &mut scratch.system, dt, &scratch.jac);

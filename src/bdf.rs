@@ -259,7 +259,9 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
         }
 
         // --- 2. Compute Jacobian J = ∂f/∂u at (t, u) ---
-        linalg::compute_jacobian(&mut scratch.jac, f, t, u);
+        let scale = u.iter().fold(T::one(), |m, &x| T::max(m, x.abs()));
+        let h = T::from_f64(1e-8).unwrap() * scale;
+        linalg::compute_jacobian(&mut scratch.jac, f, t, u, h);
 
         // --- 3. Build Newton system matrix M = I − h·β·J ---
         let hbeta = dt * T::from_f64(beta).unwrap();

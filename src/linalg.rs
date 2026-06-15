@@ -7,23 +7,21 @@
 use ndarray::Array1;
 use ndarray::Array2;
 use num_traits::Float;
-use num_traits::FromPrimitive;
 
 use crate::types::RhsODEFn;
 
 /// Compute the finite-difference Jacobian `J = ∂f/∂u` at `(t, u)`.
 ///
-/// Uses second-order central differences with step `h = 1e-6`.
+/// Uses second-order central differences with caller-provided step `h`.
 /// The result is stored in `jac` (overwritten).
 #[allow(clippy::many_single_char_names)]
-pub fn compute_jacobian<T, F>(jac: &mut Array2<T>, f: &F, t: T, u: &Array1<T>)
+pub fn compute_jacobian<T, F>(jac: &mut Array2<T>, f: &F, t: T, u: &Array1<T>, h: T)
 where
-    T: Float + FromPrimitive,
+    T: Float,
     F: RhsODEFn<T>,
 {
     let n_vars = u.len();
-    let h = T::from_f64(1e-6).unwrap();
-    let two_h = T::from_f64(2.0).unwrap() * h;
+    let two_h = h + h;
     let mut u_plus = u.to_owned();
     let mut u_minus = u.to_owned();
 
