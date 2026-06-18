@@ -1,10 +1,11 @@
+#![allow(missing_docs)]
+
 use ndarray::Array1;
 use ndarray::array;
 use num_traits::Float;
 use num_traits::FromPrimitive;
 use raznoor::ODEProblem;
 
-#[allow(dead_code)]
 pub fn residual<T: Float>(xs: &[T], ys: &[T]) -> Result<T, &'static str> {
     if xs.len() != ys.len() {
         return Err("arrays should have equal length");
