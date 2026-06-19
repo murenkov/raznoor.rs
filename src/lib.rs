@@ -64,11 +64,15 @@ mod solver;
 /// Dense output (continuous interpolation) support.
 pub mod dense;
 
+/// Boundary value problem (BVP) solvers (simple shooting).
+pub mod bvp;
+
 /// Parallel batched ODE solves using rayon.
 #[cfg(feature = "parallel")]
 pub mod batch;
 
 pub use bdf::{BDF1, BDF2, BDF3, BDF4, BDF5, BDF6, BDFMethod, BDFScratch};
+pub use bvp::{BVPProblem, BVPSolver, ShootingSolver};
 pub use dense::{DenseOutput, HermiteInterpolant};
 pub use erk::{
     DORMAND_PRINCE45, ExplicitRKScratch, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
