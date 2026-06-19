@@ -1,6 +1,7 @@
 pub mod adaptive;
 pub mod events;
 pub mod fixed_step;
+pub mod grid;
 
 pub use adaptive::AdaptiveODESolver;
 pub use fixed_step::FixedStepODESolver;
