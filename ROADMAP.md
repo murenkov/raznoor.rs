@@ -17,7 +17,7 @@
 
 ## v0.4
 
-- [ ] Boundary value problem (BVP) solvers
+- [x] Boundary value problem (BVP) solvers
 - [ ] Delay differential equation (DDE) support
 - [ ] Sensitivity analysis / adjoint methods
 - [ ] Python bindings (via PyO3)

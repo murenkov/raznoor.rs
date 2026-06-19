@@ -275,6 +275,8 @@ pub enum SolverError {
     AdaptiveNotSupported,
     /// The provided step size is zero or negative.
     InvalidStepSize,
+    /// The default finite-difference step (`1e-6`) is not representable as `T`.
+    InvalidDiffStep,
     /// The initial condition contains NaN or infinite values.
     InvalidInitialCondition,
     /// An event function returned NaN or infinite value.
@@ -289,6 +291,9 @@ pub enum SolverError {
     /// The data provided to construct an interpolant is invalid (e.g.
     /// inconsistent lengths, too few points, or non-increasing time values).
     InvalidInterpolationData,
+    /// The BVP shooting method did not converge within the maximum number of
+    /// iterations.
+    BvpNotConverged,
 }
 
 impl PartialEq for SolverError {
@@ -305,6 +310,12 @@ impl std::fmt::Display for SolverError {
             }
             Self::InvalidStepSize => {
                 write!(f, "step size must be positive")
+            }
+            Self::InvalidDiffStep => {
+                write!(
+                    f,
+                    "default diff_step `1e-6` cannot be represented as the scalar type `T`"
+                )
             }
             Self::InvalidInitialCondition => {
                 write!(f, "initial condition contains NaN or infinite values")
@@ -326,6 +337,9 @@ impl std::fmt::Display for SolverError {
             }
             Self::InvalidInterpolationData => {
                 write!(f, "invalid interpolation data")
+            }
+            Self::BvpNotConverged => {
+                write!(f, "BVP solver did not converge")
             }
         }
     }
