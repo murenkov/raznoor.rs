@@ -3,6 +3,9 @@ pub mod events;
 pub mod fixed_step;
 pub mod grid;
 
+#[cfg(feature = "parallel")]
+pub mod batch;
+
 pub use adaptive::AdaptiveODESolver;
 pub use fixed_step::FixedStepODESolver;
 
@@ -10,7 +13,7 @@ use ndarray::Array1;
 use num_traits::Float;
 use num_traits::FromPrimitive;
 
-use crate::erk::ExplicitRungeKuttaMethod;
+use crate::ivp::erk::ExplicitRungeKuttaMethod;
 use crate::types::{EnsembleODEProblem, ODEProblem, ODESolution, RhsODEFn, SolverError};
 
 /// A single-step ODE integration method.

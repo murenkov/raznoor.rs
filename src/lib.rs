@@ -1,4 +1,6 @@
-//! Explicit and implicit Runge-Kutta ODE solvers for scalar and system initial value problems.
+//! Explicit Runge-Kutta, implicit Runge-Kutta, and BDF ODE solvers for scalar
+//! and system initial value problems. Includes a simple shooting method for
+//! boundary value problems and parallel ensemble solves.
 //!
 //! # Example
 //!
@@ -43,22 +45,16 @@
 //! assert_eq!(sol.events.len(), 1);
 //! ```
 
-/// Types used by the ODE solver.
+/// Core types used by the ODE solvers.
 pub mod types;
 
-/// Butcher tableaus for explicit Runge-Kutta methods.
-pub mod erk;
-
-/// Butcher tableaus and Newton-based solver for implicit Runge-Kutta methods.
-pub mod irk;
-
-/// Backward Differentiation Formula (BDF) methods for stiff ODEs.
-pub mod bdf;
+/// Explicit Runge-Kutta, implicit Runge-Kutta, and BDF method definitions.
+pub mod ivp;
 
 /// Shared linear algebra utilities (LU factorisation, Jacobian).
 pub(crate) mod linalg;
 
-/// Fixed-step and adaptive ODE solvers.
+/// Fixed-step, adaptive, and (optionally) parallel ODE solvers.
 mod solver;
 
 /// Dense output (continuous interpolation) support.
@@ -67,20 +63,13 @@ pub mod dense;
 /// Boundary value problem (BVP) solvers (simple shooting).
 pub mod bvp;
 
-/// Parallel batched ODE solves using rayon.
-#[cfg(feature = "parallel")]
-pub mod batch;
-
-pub use bdf::{BDF1, BDF2, BDF3, BDF4, BDF5, BDF6, BDFMethod, BDFScratch};
 pub use bvp::{BVPProblem, BVPSolver, ShootingSolver};
 pub use dense::{DenseOutput, HermiteInterpolant};
-pub use erk::{
-    DORMAND_PRINCE45, ExplicitRKScratch, ExplicitRungeKuttaMethod, FEHLBERG45, RUNGE_KUTTA_1,
-    RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
-};
-pub use irk::{
-    BACKWARD_EULER, CRANK_NICOLSON, GAUSS_LEGENDRE_4, IMPLICIT_MIDPOINT, ImplicitRKScratch,
-    ImplicitRungeKuttaMethod, RADAU_IIA_3, RADAU_IIA_5,
+pub use ivp::{
+    BACKWARD_EULER, BDF1, BDF2, BDF3, BDF4, BDF5, BDF6, BDFMethod, BDFScratch, CRANK_NICOLSON,
+    DORMAND_PRINCE45, ExplicitRKScratch, ExplicitRungeKuttaMethod, FEHLBERG45, GAUSS_LEGENDRE_4,
+    IMPLICIT_MIDPOINT, ImplicitRKScratch, ImplicitRungeKuttaMethod, RADAU_IIA_3, RADAU_IIA_5,
+    RUNGE_KUTTA_1, RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
 };
 pub use solver::{
     AdaptiveODESolver, AdaptiveRK, EnsembleODESolver, FixedStepODESolver, FixedStepRK, ODEMethod,
