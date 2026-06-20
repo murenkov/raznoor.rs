@@ -11,9 +11,10 @@ env:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         features: ["", "--features parallel"]
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +28,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install pre-commit
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: pre-commit/action@v3.0.1
 
       - name: Clippy
@@ -38,21 +40,21 @@ jobs:
       # cargo-machete: checks that every declared [dependencies] entry is
       # actually imported somewhere in the code. Lightweight, runs on stable.
       - name: Install cargo-machete
-        if: ${{ matrix.features == '' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.features == '' }}
         run: cargo install cargo-machete
 
       - name: Check declared deps are used
-        if: ${{ matrix.features == '' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.features == '' }}
         run: cargo machete
 
       - name: Install cargo-deny
-        if: ${{ matrix.features == '' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.features == '' }}
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-deny
 
       - name: Deny check
-        if: ${{ matrix.features == '' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.features == '' }}
         run: cargo deny check
 
   # cargo-udeps: detects truly unused transitive dependencies at the crate
