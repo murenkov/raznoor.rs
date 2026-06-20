@@ -54,6 +54,9 @@ pub mod ivp;
 /// Shared linear algebra utilities (LU factorisation, Jacobian).
 pub(crate) mod linalg;
 
+/// Internal utility functions.
+mod util;
+
 /// Fixed-step, adaptive, and (optionally) parallel ODE solvers.
 mod solver;
 
@@ -63,6 +66,9 @@ pub mod dense;
 /// Boundary value problem (BVP) solvers (simple shooting).
 pub mod bvp;
 
+/// Forward and adjoint sensitivity analysis for ODE systems.
+pub mod sensitivity;
+
 pub use bvp::{BVPProblem, BVPSolver, ShootingSolver};
 pub use dense::{DenseOutput, HermiteInterpolant};
 pub use ivp::{
@@ -70,6 +76,9 @@ pub use ivp::{
     DORMAND_PRINCE45, ExplicitRKScratch, ExplicitRungeKuttaMethod, FEHLBERG45, GAUSS_LEGENDRE_4,
     IMPLICIT_MIDPOINT, ImplicitRKScratch, ImplicitRungeKuttaMethod, RADAU_IIA_3, RADAU_IIA_5,
     RUNGE_KUTTA_1, RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
+};
+pub use sensitivity::{
+    ForwardSensitivityProblem, ForwardSensitivitySolution, ForwardSensitivitySolver,
 };
 pub use solver::{
     AdaptiveODESolver, AdaptiveRK, EnsembleODESolver, FixedStepODESolver, FixedStepRK, ODEMethod,

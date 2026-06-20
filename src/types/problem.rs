@@ -4,15 +4,7 @@ use num_traits::Float;
 
 use crate::types::error::SolverError;
 use crate::types::event::Event;
-
-fn validate_initial_condition<T: Float>(u0: &[T]) -> Result<(), SolverError> {
-    for &val in u0 {
-        if val.is_nan() || val.is_infinite() {
-            return Err(SolverError::InvalidInitialCondition);
-        }
-    }
-    Ok(())
-}
+use crate::util::validate_initial_condition;
 
 /// An initial value problem for a system of ordinary differential equations.
 ///
