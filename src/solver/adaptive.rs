@@ -52,11 +52,11 @@ impl<M: ODEMethod<T>, T: Float> AdaptiveODESolver<M, T> {
     /// Create a new adaptive solver configuration.
     ///
     /// # Errors
-    /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero or negative.
+    /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero.
     /// Returns `Err(SolverError::AdaptiveNotSupported)` if `method` does not
     /// support adaptive error estimation.
     pub fn new(method: M, dt: T, atol: T, rtol: T) -> Result<Self, SolverError> {
-        if dt <= T::zero() {
+        if dt == T::zero() {
             return Err(SolverError::InvalidStepSize);
         }
         if !method.supports_adaptive() {
@@ -138,6 +138,9 @@ where
         let n = prob.u0.len();
         let t0 = prob.tspan.0;
         let tf = prob.tspan.1;
+        if (self.dt > T::zero()) != (tf >= t0) {
+            return Err(SolverError::InvalidStepSize);
+        }
         let direction = if tf >= t0 { T::one() } else { -T::one() };
 
         let ctrl = StepControl {
