@@ -275,16 +275,25 @@ pub struct ExplicitRKScratch<T> {
     pub(crate) arg: Array1<T>,
     /// Buffered weighted combination `∑ b[i]·ks[i]`.
     du: Array1<T>,
+    /// Pre-computed `b - b_hat` coefficients for error estimation.
+    b_diff: Vec<f64>,
 }
 
 impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
     type Scratch = ExplicitRKScratch<T>;
 
     fn prepare(&self, n_vars: usize) -> Self::Scratch {
+        let b_diff: Vec<f64> = self
+            .b
+            .iter()
+            .zip(self.b_hat.iter())
+            .map(|(&b, &bh)| b - bh)
+            .collect();
         ExplicitRKScratch {
             ks: vec![Array1::zeros(n_vars); self.c.len()],
             arg: Array1::zeros(n_vars),
             du: Array1::zeros(n_vars),
+            b_diff,
         }
     }
 
@@ -317,13 +326,7 @@ impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
     ) -> (Array1<T>, Array1<T>, Array1<T>) {
         compute_stages(f, t, dt, u, self, scratch);
         weighted_sum_into(&scratch.ks, self.b, &mut scratch.du);
-        let b_diff: Vec<f64> = self
-            .b
-            .iter()
-            .zip(self.b_hat.iter())
-            .map(|(&b, &bh)| b - bh)
-            .collect();
-        let delta = weighted_sum(&scratch.ks, &b_diff);
+        let delta = weighted_sum(&scratch.ks, &scratch.b_diff);
         let mut u_new = Array1::zeros(u.len());
         ndarray::Zip::from(&mut u_new)
             .and(u)
