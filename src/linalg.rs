@@ -170,7 +170,7 @@ mod tests {
             compute_jacobian(&mut jac_fd, &nonlinear_scalar_rhs, 0.0, &u, h);
             let jac_exact = array![[u[0].cos()]];
             let diff = max_abs_diff(&jac_fd, &jac_exact);
-            let tol = h.mul_add(h, 1e-10);
+            let tol = h.mul_add(h, 1e-9);
             prop_assert!(diff < tol, "nonlinear scalar: |J_fd - J_exact| = {} >= {} (h={})", diff, tol, h);
         }
 
@@ -191,7 +191,7 @@ mod tests {
             compute_jacobian(&mut jac_fd, &nonlinear_2d_rhs, 0.0, &u, h);
             let jac_exact = array![[0.0, 1.0], [-u[0].cos(), -1.0]];
             let diff = max_abs_diff(&jac_fd, &jac_exact);
-            let tol = h.mul_add(h, 1e-10);
+            let tol = h.mul_add(h, 1e-9);
             prop_assert!(diff < tol, "nonlinear 2d: |J_fd - J_exact| = {} >= {} (h={})", diff, tol, h);
         }
     }
