@@ -19,5 +19,5 @@
 
 - [x] Boundary value problem (BVP) solvers
 - [ ] Delay differential equation (DDE) support
-- [ ] Sensitivity analysis / adjoint methods
+- [x] Forward sensitivity analysis
 - [ ] Python bindings (via PyO3)

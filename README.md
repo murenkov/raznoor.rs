@@ -13,6 +13,7 @@ A Rust library for solving ordinary differential equations (ODEs) using explicit
 - Generic over floating-point types (`f32`, `f64`)
 - Error handling via `SolverError` instead of panics
 - **Parallel** ensemble solving via `rayon` (optional `parallel` feature)
+- **Forward sensitivity analysis** (parameter sensitivities via state augmentation)
 
 ## Usage
 
@@ -70,6 +71,34 @@ assert!(results.iter().all(|r| r.is_ok()));
 This is especially useful for **Monte Carlo simulations**, parameter sweeps, and
 ensemble forecasting where you need to explore many initial conditions with the
 same dynamics.
+
+## Sensitivity analysis
+
+Compute parameter sensitivities `∂u/∂θ` alongside the ODE solution using forward sensitivity analysis:
+
+```rust
+use ndarray::array;
+use raznoor::{
+    FixedStepODESolver, ForwardSensitivityProblem, ForwardSensitivitySolver, RUNGE_KUTTA_4,
+};
+
+// Parameterised ODE: u' = p * u
+let f = |_t: f64, u: &ndarray::Array1<f64>, p: &ndarray::Array1<f64>| array![p[0] * u[0]];
+
+let prob = ForwardSensitivityProblem::new(f, array![1.0], array![0.5], (0.0, 2.0)).unwrap();
+
+let solver = ForwardSensitivitySolver::new(
+    FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01).unwrap(),
+);
+let result = solver.solve(&prob).unwrap();
+
+// Trajectories and sensitivities at each time step
+let states = result.states();
+let sensitivities = result.sensitivities();
+```
+
+Any [`ODESolver`] backed solver ([`FixedStepODESolver`], [`AdaptiveODESolver`]) can be
+wrapped — the sensitivity system is solved via state augmentation.
 
 ## Extensibility
 

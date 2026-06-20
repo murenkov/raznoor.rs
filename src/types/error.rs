@@ -39,6 +39,9 @@ pub enum SolverError {
     /// The BVP shooting method did not converge within the maximum number of
     /// iterations.
     BvpNotConverged,
+    /// The parameter vector is empty or the sensitivity initial condition has
+    /// an invalid shape.
+    InvalidParameters,
 }
 
 impl PartialEq for SolverError {
@@ -85,6 +88,9 @@ impl std::fmt::Display for SolverError {
             }
             Self::BvpNotConverged => {
                 write!(f, "BVP solver did not converge")
+            }
+            Self::InvalidParameters => {
+                write!(f, "invalid parameters for sensitivity analysis")
             }
         }
     }
