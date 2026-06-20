@@ -171,12 +171,12 @@ impl<M, T: Float + FromPrimitive> ShootingSolver<M, T> {
     ///
     /// # Errors
     ///
-    /// Returns [`SolverError::InvalidStepSize`] if `dt` is zero or negative.
+    /// Returns [`SolverError::InvalidStepSize`] if `dt` is zero.
     ///
     /// Returns [`SolverError::InvalidDiffStep`] if `1e-6` is not representable
     /// as `T` (in practice this never happens for `f32` or `f64`).
     pub fn new(method: M, dt: T, max_iter: usize, tol: T) -> Result<Self, SolverError> {
-        if dt <= T::zero() {
+        if dt == T::zero() {
             return Err(SolverError::InvalidStepSize);
         }
         Ok(Self {
@@ -243,16 +243,16 @@ impl<M: ODEMethod<T>, T: Float + FromPrimitive> ShootingSolver<M, T> {
         bc: &BC,
         u0: &Array1<T>,
         tspan: (T, T),
-    ) -> (ODESolution<T>, Array1<T>)
+    ) -> Result<(ODESolution<T>, Array1<T>), SolverError>
     where
         F: RhsODEFn<T>,
         BC: Fn(&Array1<T>, &Array1<T>) -> Array1<T>,
     {
-        let sol = integrate(&self.method, f, u0, tspan, self.dt);
+        let sol = integrate(&self.method, f, u0, tspan, self.dt)?;
         let left = sol.u.row(0).to_owned();
         let right = sol.u.row(sol.u.nrows() - 1).to_owned();
         let r = bc(&left, &right);
-        (sol, r)
+        Ok((sol, r))
     }
 
     /// Approximate the Jacobian J = ∂r/∂u0 via forward finite differences.
@@ -263,7 +263,7 @@ impl<M: ODEMethod<T>, T: Float + FromPrimitive> ShootingSolver<M, T> {
         u0: &Array1<T>,
         r: &Array1<T>,
         tspan: (T, T),
-    ) -> Array2<T>
+    ) -> Result<Array2<T>, SolverError>
     where
         F: RhsODEFn<T>,
         BC: Fn(&Array1<T>, &Array1<T>) -> Array1<T>,
@@ -273,12 +273,12 @@ impl<M: ODEMethod<T>, T: Float + FromPrimitive> ShootingSolver<M, T> {
         for j in 0..n {
             let mut u0_pert = u0.clone();
             u0_pert[j] = u0_pert[j] + self.diff_step;
-            let (_, r_pert) = self.residual(f, bc, &u0_pert, tspan);
+            let (_, r_pert) = self.residual(f, bc, &u0_pert, tspan)?;
             for i in 0..n {
                 jac[[i, j]] = (r_pert[i] - r[i]) / self.diff_step;
             }
         }
-        jac
+        Ok(jac)
     }
 
     /// Solve the Newton system `J · Δ = −r` (in-place) and return `Δ`.
@@ -304,7 +304,7 @@ where
         let mut u0 = prob.guess.clone();
 
         for iter in 0..self.max_iter {
-            let (sol, r) = self.residual(&prob.f, &prob.bc, &u0, prob.tspan);
+            let (sol, r) = self.residual(&prob.f, &prob.bc, &u0, prob.tspan)?;
 
             let max_res = r.iter().fold(T::zero(), |m, &x| T::max(m, x.abs()));
             if max_res < self.tol {
@@ -315,7 +315,7 @@ where
                 break;
             }
 
-            let jac = self.compute_jacobian(&prob.f, &prob.bc, &u0, &r, prob.tspan);
+            let jac = self.compute_jacobian(&prob.f, &prob.bc, &u0, &r, prob.tspan)?;
             let delta = Self::newton_step(jac, r);
 
             for i in 0..u0.len() {
@@ -329,13 +329,19 @@ where
 
 /// Integrate an ODE from `tspan.0` to `tspan.1` with the given initial
 /// condition `u0` using the supplied method at a fixed step size `dt`.
-fn integrate<M, T, F>(method: &M, f: &F, u0: &Array1<T>, tspan: (T, T), dt: T) -> ODESolution<T>
+fn integrate<M, T, F>(
+    method: &M,
+    f: &F,
+    u0: &Array1<T>,
+    tspan: (T, T),
+    dt: T,
+) -> Result<ODESolution<T>, SolverError>
 where
     M: ODEMethod<T>,
     T: Float + FromPrimitive,
     F: RhsODEFn<T>,
 {
-    let ts = generate_time_grid(tspan, dt);
+    let ts = generate_time_grid(tspan, dt)?;
     let n_steps = ts.len();
     let n_vars = u0.len();
 
@@ -352,5 +358,5 @@ where
         u_curr = u_new;
     }
 
-    ODESolution::new(ts.into_boxed_slice(), u)
+    Ok(ODESolution::new(ts.into_boxed_slice(), u))
 }

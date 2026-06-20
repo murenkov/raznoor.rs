@@ -23,11 +23,28 @@ fn solve_zero_dt() {
 #[test]
 fn solve_negative_dt() {
     let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-    let prob = ODEProblem::new(f, array![1.0], (0.0, 1.0)).unwrap();
-    let result = FixedStepODESolver::new(RUNGE_KUTTA_4, -0.01).and_then(|s| s.solve(&prob));
+    let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
+    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, -0.01)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
     assert!(
-        matches!(result, Err(SolverError::InvalidStepSize)),
-        "solve with negative dt should return InvalidStepSize error"
+        (sol.t[0] - 1.0_f64).abs() < f64::EPSILON,
+        "first time point should be t0"
+    );
+    assert!(
+        (sol.t[sol.t.len() - 1] - 0.0_f64).abs() < f64::EPSILON,
+        "last time point should be tf"
+    );
+    for i in 1..sol.t.len() {
+        assert!(
+            sol.t[i] < sol.t[i - 1],
+            "time should be monotonically decreasing"
+        );
+    }
+    assert!(
+        sol.t.len() > 2,
+        "should produce more than just first and last time points"
     );
 }
 
@@ -88,7 +105,7 @@ fn solve_empty_system() {
 fn solve_negative_direction() {
     let f = |_t: f64, _u: &Array1<f64>| array![0.0];
     let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
+    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, -0.1)
         .unwrap()
         .solve(&prob)
         .unwrap();
@@ -132,7 +149,7 @@ fn solve_adaptive_inf_initial_condition() {
 fn solve_adaptive_negative_direction() {
     let f = |_t: f64, _u: &Array1<f64>| array![0.0];
     let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
-    let sol = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6)
+    let sol = AdaptiveODESolver::new(DORMAND_PRINCE45, -0.01, 1e-6, 1e-6)
         .unwrap()
         .solve(&prob)
         .unwrap();

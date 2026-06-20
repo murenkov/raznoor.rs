@@ -396,7 +396,7 @@ proptest! {
 
     #[test]
     fn backward_integration_erk(
-        dt in 1e-4f64..0.2f64,
+        dt in -0.2f64..-1e-4f64,
     ) {
         let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
         let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
@@ -416,7 +416,7 @@ proptest! {
 
     #[test]
     fn backward_integration_irk(
-        dt in 1e-4f64..0.2f64,
+        dt in -0.2f64..-1e-4f64,
     ) {
         let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
         let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
@@ -436,7 +436,7 @@ proptest! {
 
     #[test]
     fn backward_integration_bdf(
-        dt in 1e-4f64..0.2f64,
+        dt in -0.2f64..-1e-4f64,
     ) {
         let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
         let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();
@@ -456,7 +456,7 @@ proptest! {
 
     #[test]
     fn backward_integration_adaptive(
-        dt in 1e-4f64..0.2f64,
+        dt in -0.2f64..-1e-4f64,
     ) {
         let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
         let prob = ODEProblem::new(f, array![1.0], (1.0, 0.0)).unwrap();

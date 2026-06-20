@@ -44,9 +44,9 @@ impl<M, T: Float> FixedStepODESolver<M, T> {
     /// Create a new fixed-step solver configuration.
     ///
     /// # Errors
-    /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero or negative.
+    /// Returns `Err(SolverError::InvalidStepSize)` if `dt` is zero.
     pub fn new(method: M, dt: T) -> Result<Self, SolverError> {
-        if dt <= T::zero() {
+        if dt == T::zero() {
             return Err(SolverError::InvalidStepSize);
         }
         Ok(Self {
@@ -88,7 +88,7 @@ where
     F: RhsODEFn<T>,
 {
     fn solve(&self, prob: &ODEProblem<T, F>) -> Result<ODESolution<T>, SolverError> {
-        let mut ts = generate_time_grid(prob.tspan, self.dt);
+        let mut ts = generate_time_grid(prob.tspan, self.dt)?;
 
         let n = prob.u0.len();
         let n_steps = ts.len();
