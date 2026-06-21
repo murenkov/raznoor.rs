@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1782030469824,
+  "lastUpdate": 1782032176791,
   "repoUrl": "https://github.com/murenkov/raznoor.rs",
   "entries": {
     "Benchmark": [
@@ -33267,6 +33267,330 @@ window.BENCHMARK_DATA = {
             "name": "precision/RK4_f64",
             "value": 151080,
             "range": "± 3118",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ymurenkov@yandex.ru",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "committer": {
+            "email": "17390550+murenkov@users.noreply.github.com",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "distinct": true,
+          "id": "3567681bfefb2ed6815a5b3672a39e0868370a70",
+          "message": "refactor!: remove unused T generic from ExplicitRungeKuttaMethod\n\nThe `ExplicitRungeKuttaMethod<T: 'static>` struct was generic over `T`, but all\nseven pre-defined const instances used `f64`. The type parameter enforced an\nunnecessary `'static` bound and provided no actual flexibility — coefficients\nare always `f64`.\n\nRemove the generic parameter to simplify the public API and all downstream\nsignatures.\n\nChanges:\n- Remove `<T: 'static>` from struct definition\n- Change all field types from `T` to `f64`\n- Remove `<f64>` from all 7 const declarations (RK1–RK5, Fehlberg45,\n  Dormand-Prince45)\n- Remove `<f64>` from `ODEMethod<T>` impl and `compute_stages` fn signature\n- Remove `<f64>` from `FixedStepRK` and `AdaptiveRK` type aliases\n- Remove `<f64>` from `ERKMethod` bench type alias\n\n`f32` and other float-type solves continue to work because the `ODEMethod<T>`\nimpl is generic over `T`, with coefficients converted via `T::from_f64()`.",
+          "timestamp": "2026-06-21T11:46:00+03:00",
+          "tree_id": "a9a5d725165f45652d4b2d797337187493693cea",
+          "url": "https://github.com/murenkov/raznoor.rs/commit/3567681bfefb2ed6815a5b3672a39e0868370a70"
+        },
+        "date": 1782032176163,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "fixed_step/RK1_f32_coarse",
+            "value": 7495,
+            "range": "± 24",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_coarse",
+            "value": 7925,
+            "range": "± 39",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f32_fine",
+            "value": 76002,
+            "range": "± 2133",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_fine",
+            "value": 76154,
+            "range": "± 1107",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_coarse",
+            "value": 10082,
+            "range": "± 148",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_coarse",
+            "value": 10069,
+            "range": "± 39",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_fine",
+            "value": 97528,
+            "range": "± 350",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_fine",
+            "value": 97878,
+            "range": "± 532",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_coarse",
+            "value": 12492,
+            "range": "± 1018",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_coarse",
+            "value": 12616,
+            "range": "± 36",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_fine",
+            "value": 121584,
+            "range": "± 458",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_fine",
+            "value": 123138,
+            "range": "± 282",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_coarse",
+            "value": 14783,
+            "range": "± 44",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_coarse",
+            "value": 15010,
+            "range": "± 50",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_fine",
+            "value": 144055,
+            "range": "± 381",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_fine",
+            "value": 146210,
+            "range": "± 513",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_coarse",
+            "value": 21032,
+            "range": "± 98",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_coarse",
+            "value": 21169,
+            "range": "± 117",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_fine",
+            "value": 207541,
+            "range": "± 1513",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_fine",
+            "value": 208662,
+            "range": "± 11909",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_coarse",
+            "value": 21246,
+            "range": "± 157",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_coarse",
+            "value": 21666,
+            "range": "± 75",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_fine",
+            "value": 209754,
+            "range": "± 1676",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_fine",
+            "value": 211347,
+            "range": "± 858",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_coarse",
+            "value": 24963,
+            "range": "± 110",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_coarse",
+            "value": 24876,
+            "range": "± 73",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_fine",
+            "value": 250670,
+            "range": "± 1838",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_fine",
+            "value": 245239,
+            "range": "± 518",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f32",
+            "value": 6234,
+            "range": "± 152",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f64",
+            "value": 38378,
+            "range": "± 312",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f32",
+            "value": 6268,
+            "range": "± 27",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f64",
+            "value": 38872,
+            "range": "± 584",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK1_fixed",
+            "value": 858751,
+            "range": "± 17730",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK2_fixed",
+            "value": 1121842,
+            "range": "± 21649",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK3_fixed",
+            "value": 1424801,
+            "range": "± 10322",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK4_fixed",
+            "value": 1725112,
+            "range": "± 21742",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK5_fixed",
+            "value": 2570286,
+            "range": "± 8281",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_fixed",
+            "value": 2605799,
+            "range": "± 13174",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_fixed",
+            "value": 3025662,
+            "range": "± 17398",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_adaptive",
+            "value": 153120,
+            "range": "± 364",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_adaptive",
+            "value": 158400,
+            "range": "± 805",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK1_100k",
+            "value": 12867202,
+            "range": "± 474370",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK2_100k",
+            "value": 17650341,
+            "range": "± 36414",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK3_100k",
+            "value": 22632972,
+            "range": "± 37372",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK4_100k",
+            "value": 27371172,
+            "range": "± 1413792",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK5_100k",
+            "value": 39507980,
+            "range": "± 965906",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/Fehlberg45_100k",
+            "value": 39875790,
+            "range": "± 178357",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/DP45_100k",
+            "value": 45705940,
+            "range": "± 122322",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f32",
+            "value": 144628,
+            "range": "± 649",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f64",
+            "value": 146313,
+            "range": "± 664",
             "unit": "ns/iter"
           }
         ]
