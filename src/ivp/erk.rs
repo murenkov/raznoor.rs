@@ -6,15 +6,15 @@
 /// provided as `const` values.
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
-pub struct ExplicitRungeKuttaMethod<T: 'static> {
+pub struct ExplicitRungeKuttaMethod {
     /// Runge-Kutta matrix (row slices of the lower-triangular part).
-    pub a: &'static [&'static [T]],
+    pub a: &'static [&'static [f64]],
     /// Higher-order weights for the solution.
-    pub b: &'static [T],
+    pub b: &'static [f64],
     /// Lower-order embedded weights for error estimation (adaptive stepping).
-    pub b_hat: &'static [T],
+    pub b_hat: &'static [f64],
     /// Node positions.
-    pub c: &'static [T],
+    pub c: &'static [f64],
     /// The (lower) order `p` of this method.
     pub order: usize,
 }
@@ -36,7 +36,7 @@ const RK1_A: &[&[f64]] = &[
 /// // Non-adaptive method: b and b_hat are identical
 /// assert_eq!(RUNGE_KUTTA_1.b, RUNGE_KUTTA_1.b_hat);
 /// ```
-pub const RUNGE_KUTTA_1: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+pub const RUNGE_KUTTA_1: ExplicitRungeKuttaMethod = ExplicitRungeKuttaMethod {
     a: RK1_A,
     b: &[1.0],
     b_hat: &[1.0],
@@ -61,7 +61,7 @@ const RK2_A: &[&[f64]] = &[
 /// assert!((RUNGE_KUTTA_2.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
 /// assert_eq!(RUNGE_KUTTA_2.b, RUNGE_KUTTA_2.b_hat);
 /// ```
-pub const RUNGE_KUTTA_2: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+pub const RUNGE_KUTTA_2: ExplicitRungeKuttaMethod = ExplicitRungeKuttaMethod {
     a: RK2_A,
     b: &[0.5, 0.5],
     b_hat: &[0.5, 0.5],
@@ -87,7 +87,7 @@ const RK3_A: &[&[f64]] = &[
 /// assert!((RUNGE_KUTTA_3.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
 /// assert_eq!(RUNGE_KUTTA_3.b, RUNGE_KUTTA_3.b_hat);
 /// ```
-pub const RUNGE_KUTTA_3: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+pub const RUNGE_KUTTA_3: ExplicitRungeKuttaMethod = ExplicitRungeKuttaMethod {
     a: RK3_A,
     b: &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
     b_hat: &[1.0 / 6.0, 2.0 / 3.0, 1.0 / 6.0],
@@ -114,7 +114,7 @@ const RK4_A: &[&[f64]] = &[
 /// assert!((RUNGE_KUTTA_4.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
 /// assert_eq!(RUNGE_KUTTA_4.b, RUNGE_KUTTA_4.b_hat);
 /// ```
-pub const RUNGE_KUTTA_4: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+pub const RUNGE_KUTTA_4: ExplicitRungeKuttaMethod = ExplicitRungeKuttaMethod {
     a: RK4_A,
     b: &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
     b_hat: &[1.0 / 6.0, 1.0 / 3.0, 1.0 / 3.0, 1.0 / 6.0],
@@ -143,7 +143,7 @@ const RK5_A: &[&[f64]] = &[
 /// assert!((RUNGE_KUTTA_5.b.iter().sum::<f64>() - 1.0).abs() < 1e-15);
 /// assert_eq!(RUNGE_KUTTA_5.b, RUNGE_KUTTA_5.b_hat);
 /// ```
-pub const RUNGE_KUTTA_5: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+pub const RUNGE_KUTTA_5: ExplicitRungeKuttaMethod = ExplicitRungeKuttaMethod {
     a: RK5_A,
     b: &[
         7.0 / 90.0,
@@ -187,7 +187,7 @@ const FEHLBERG45_A: &[&[f64]] = &[
 /// // Adaptive method: b and b_hat are distinct
 /// assert_ne!(FEHLBERG45.b, FEHLBERG45.b_hat);
 /// ```
-pub const FEHLBERG45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+pub const FEHLBERG45: ExplicitRungeKuttaMethod = ExplicitRungeKuttaMethod {
     a: FEHLBERG45_A,
     b: &[
         16.0 / 135.0,
@@ -232,7 +232,7 @@ const DORMAND_PRINCE45_A: &[&[f64]] = &[
 /// // Adaptive method: b and b_hat are distinct
 /// assert_ne!(DORMAND_PRINCE45.b, DORMAND_PRINCE45.b_hat);
 /// ```
-pub const DORMAND_PRINCE45: ExplicitRungeKuttaMethod<f64> = ExplicitRungeKuttaMethod {
+pub const DORMAND_PRINCE45: ExplicitRungeKuttaMethod = ExplicitRungeKuttaMethod {
     a: DORMAND_PRINCE45_A,
     b: &[
         35.0 / 384.0,
@@ -279,7 +279,7 @@ pub struct ExplicitRKScratch<T> {
     b_diff: Vec<f64>,
 }
 
-impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod<f64> {
+impl<T: Float + FromPrimitive> ODEMethod<T> for ExplicitRungeKuttaMethod {
     type Scratch = ExplicitRKScratch<T>;
 
     fn prepare(&self, n_vars: usize) -> Self::Scratch {
@@ -351,7 +351,7 @@ fn compute_stages<T, F>(
     t: T,
     dt: T,
     u: &Array1<T>,
-    method: &ExplicitRungeKuttaMethod<f64>,
+    method: &ExplicitRungeKuttaMethod,
     scratch: &mut ExplicitRKScratch<T>,
 ) where
     T: Float + FromPrimitive,

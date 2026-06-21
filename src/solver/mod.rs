@@ -107,10 +107,10 @@ pub trait ODEMethod<T: Float>: Sized {
 }
 
 /// Default fixed-step solver backed by an explicit Runge–Kutta method.
-pub type FixedStepRK<T = f64> = FixedStepODESolver<ExplicitRungeKuttaMethod<f64>, T>;
+pub type FixedStepRK<T = f64> = FixedStepODESolver<ExplicitRungeKuttaMethod, T>;
 
 /// Default adaptive solver backed by an explicit Runge–Kutta embedded pair.
-pub type AdaptiveRK<T = f64> = AdaptiveODESolver<ExplicitRungeKuttaMethod<f64>, T>;
+pub type AdaptiveRK<T = f64> = AdaptiveODESolver<ExplicitRungeKuttaMethod, T>;
 
 /// A solver that can integrate an [`ODEProblem`].
 ///

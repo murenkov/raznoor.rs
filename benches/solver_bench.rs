@@ -9,7 +9,7 @@ use raznoor::{
 };
 use std::hint::black_box;
 
-type ERKMethod = ExplicitRungeKuttaMethod<f64>;
+type ERKMethod = ExplicitRungeKuttaMethod;
 
 const ALL_METHODS: &[(&str, &ERKMethod)] = &[
     ("RK1", &RUNGE_KUTTA_1),
