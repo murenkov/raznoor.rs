@@ -28,7 +28,7 @@ Example solving `u' = 2t + u` with `u(1) = 1` over `[1.0, 1.1]`:
 
 ```rust
 use ndarray::array;
-use raznoor::{FixedStepODESolver, ODEProblem, RUNGE_KUTTA_4};
+use raznoor::{FixedStepODESolver, ODEProblem, ODESolver, RUNGE_KUTTA_4};
 
 let f = |t: f64, u: &ndarray::Array1<f64>| array![2.0 * t + u[0]];
 let prob = ODEProblem::new(f, array![1.0], (1.0, 1.1)).unwrap();
@@ -107,7 +107,7 @@ New method families can be added by implementing the
 
 ```rust
 use ndarray::{Array1, array};
-use raznoor::{FixedStepODESolver, ODEMethod, ODEProblem, RhsODEFn};
+use raznoor::{FixedStepODESolver, ODEMethod, ODEProblem, ODESolver, RhsODEFn};
 
 struct MyCustomMethod;
 
