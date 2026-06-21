@@ -107,20 +107,17 @@ const NEWTON_TOL: f64 = 1e-12;
 /// releases.
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
-pub struct BDFMethod<T> {
+pub struct BDFMethod {
     /// The order of the BDF formula (1–6).
     pub order: usize,
-    /// Phantom data to satisfy the type parameter.
-    _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T> BDFMethod<T> {
+impl BDFMethod {
     /// Create a BDF method of the given order (clamped to 1–6).
     #[must_use]
     pub fn new(order: usize) -> Self {
         Self {
             order: order.clamp(1, BDF_MAX_ORDER),
-            _phantom: std::marker::PhantomData,
         }
     }
 }
@@ -130,40 +127,22 @@ impl<T> BDFMethod<T> {
 // ---------------------------------------------------------------------------
 
 /// BDF method of order 1 (equivalent to backward Euler).
-pub const BDF1: BDFMethod<f64> = BDFMethod {
-    order: 1,
-    _phantom: std::marker::PhantomData,
-};
+pub const BDF1: BDFMethod = BDFMethod { order: 1 };
 
 /// BDF method of order 2.
-pub const BDF2: BDFMethod<f64> = BDFMethod {
-    order: 2,
-    _phantom: std::marker::PhantomData,
-};
+pub const BDF2: BDFMethod = BDFMethod { order: 2 };
 
 /// BDF method of order 3.
-pub const BDF3: BDFMethod<f64> = BDFMethod {
-    order: 3,
-    _phantom: std::marker::PhantomData,
-};
+pub const BDF3: BDFMethod = BDFMethod { order: 3 };
 
 /// BDF method of order 4.
-pub const BDF4: BDFMethod<f64> = BDFMethod {
-    order: 4,
-    _phantom: std::marker::PhantomData,
-};
+pub const BDF4: BDFMethod = BDFMethod { order: 4 };
 
 /// BDF method of order 5.
-pub const BDF5: BDFMethod<f64> = BDFMethod {
-    order: 5,
-    _phantom: std::marker::PhantomData,
-};
+pub const BDF5: BDFMethod = BDFMethod { order: 5 };
 
 /// BDF method of order 6.
-pub const BDF6: BDFMethod<f64> = BDFMethod {
-    order: 6,
-    _phantom: std::marker::PhantomData,
-};
+pub const BDF6: BDFMethod = BDFMethod { order: 6 };
 
 // ---------------------------------------------------------------------------
 // Scratch buffers
@@ -200,7 +179,7 @@ impl<T: Float> BDFScratch<T> {
 // ODEMethod trait implementation
 // ---------------------------------------------------------------------------
 
-impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod<f64> {
+impl<T: Float + FromPrimitive> ODEMethod<T> for BDFMethod {
     type Scratch = BDFScratch<T>;
 
     fn order(&self) -> usize {
