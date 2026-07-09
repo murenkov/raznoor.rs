@@ -213,7 +213,7 @@ fn forward_sensitivity_solution_accessors() {
 
     let states = result.states();
     assert_eq!(states.ndim(), 2);
-    assert!(states.ncols() == 1);
+    assert_eq!(states.ncols(), 1);
 
     let sensitivities = result.sensitivities();
     assert_eq!(sensitivities.ndim(), 3);
