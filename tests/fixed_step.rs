@@ -1,17 +1,26 @@
 #![allow(missing_docs)]
 
+use rstest::rstest;
+
 use raznoor::{
-    DORMAND_PRINCE45, FEHLBERG45, FixedStepODESolver, ODESolver, RUNGE_KUTTA_1, RUNGE_KUTTA_2,
-    RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
+    DORMAND_PRINCE45, ExplicitRungeKuttaMethod, FEHLBERG45, FixedStepODESolver, ODESolver,
+    RUNGE_KUTTA_1, RUNGE_KUTTA_2, RUNGE_KUTTA_3, RUNGE_KUTTA_4, RUNGE_KUTTA_5,
 };
 
 mod common;
 use common::{linear_problem, oscillator_problem, residual};
 
-#[test]
-fn solve_erk1_f32() {
+#[rstest]
+#[case::erk1(RUNGE_KUTTA_1)]
+#[case::erk2(RUNGE_KUTTA_2)]
+#[case::erk3(RUNGE_KUTTA_3)]
+#[case::erk4(RUNGE_KUTTA_4)]
+#[case::erk5(RUNGE_KUTTA_5)]
+#[case::fehlberg45(FEHLBERG45)]
+#[case::dopri54(DORMAND_PRINCE45)]
+fn linear_f32(#[case] method: ExplicitRungeKuttaMethod) {
     let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_1, 0.01)
+    let sol = FixedStepODESolver::new(method, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
@@ -22,94 +31,17 @@ fn solve_erk1_f32() {
     }
 }
 
-#[test]
-fn solve_erk2_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_2, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_erk3_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_3, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_erk4_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_erk5_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_5, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_fehlberg45_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(FEHLBERG45, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_dopri54_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(DORMAND_PRINCE45, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_erk1_f64() {
+#[rstest]
+#[case::erk1(RUNGE_KUTTA_1)]
+#[case::erk2(RUNGE_KUTTA_2)]
+#[case::erk3(RUNGE_KUTTA_3)]
+#[case::erk4(RUNGE_KUTTA_4)]
+#[case::erk5(RUNGE_KUTTA_5)]
+#[case::fehlberg45(FEHLBERG45)]
+#[case::dopri54(DORMAND_PRINCE45)]
+fn linear_f64(#[case] method: ExplicitRungeKuttaMethod) {
     let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_1, 0.01)
+    let sol = FixedStepODESolver::new(method, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
@@ -120,178 +52,17 @@ fn solve_erk1_f64() {
     }
 }
 
-#[test]
-fn solve_erk2_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_2, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_erk3_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_3, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_erk4_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_erk5_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_5, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_fehlberg45_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(FEHLBERG45, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_dopri54_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(DORMAND_PRINCE45, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_system_two_vars_erk1() {
+#[rstest]
+#[case::erk1(RUNGE_KUTTA_1)]
+#[case::erk2(RUNGE_KUTTA_2)]
+#[case::erk3(RUNGE_KUTTA_3)]
+#[case::erk4(RUNGE_KUTTA_4)]
+#[case::erk5(RUNGE_KUTTA_5)]
+#[case::fehlberg45(FEHLBERG45)]
+#[case::dopri54(DORMAND_PRINCE45)]
+fn oscillator_f64(#[case] method: ExplicitRungeKuttaMethod) {
     let (prob, reference) = oscillator_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_1, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_system_two_vars_erk2() {
-    let (prob, reference) = oscillator_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_2, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_system_two_vars_erk3() {
-    let (prob, reference) = oscillator_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_3, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_system_two_vars_erk4() {
-    let (prob, reference) = oscillator_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_system_two_vars_erk5() {
-    let (prob, reference) = oscillator_problem::<f64>();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_5, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_system_two_vars_fehlberg45() {
-    let (prob, reference) = oscillator_problem::<f64>();
-    let sol = FixedStepODESolver::new(FEHLBERG45, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn solve_system_two_vars_dopri54() {
-    let (prob, reference) = oscillator_problem::<f64>();
-    let sol = FixedStepODESolver::new(DORMAND_PRINCE45, 0.01)
+    let sol = FixedStepODESolver::new(method, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
