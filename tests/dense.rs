@@ -7,9 +7,13 @@
 
 use ndarray::{Array1, array};
 use raznoor::{
-    AdaptiveODESolver, BACKWARD_EULER, BDF2, BDF4, CRANK_NICOLSON, DORMAND_PRINCE45,
-    FixedStepODESolver, ODEProblem, ODESolver, RUNGE_KUTTA_4, SolverError,
+    AdaptiveODESolver, BACKWARD_EULER, BDF2, BDF4, BDFMethod, CRANK_NICOLSON, DORMAND_PRINCE45,
+    FixedStepODESolver, ImplicitRungeKuttaMethod, ODEProblem, ODESolver, RUNGE_KUTTA_4,
+    SolverError,
 };
+use rstest::rstest;
+
+type Problem = ODEProblem<f64, fn(f64, &Array1<f64>) -> Array1<f64>>;
 
 fn linear_rhs() -> fn(f64, &Array1<f64>) -> Array1<f64> {
     |t: f64, u: &Array1<f64>| array![2.0f64.mul_add(t, u[0])]
@@ -23,9 +27,22 @@ fn oscillator_rhs() -> fn(f64, &Array1<f64>) -> Array1<f64> {
     |_t: f64, u: &Array1<f64>| array![u[1], -u[0]]
 }
 
-fn check_first_intervals(sol: &raznoor::ODESolution<f64>, n: usize, tol: f64, label: &str) {
-    let max_i = n.min(sol.t.len().saturating_sub(1));
-    for i in 0..max_i {
+fn linear_f64_problem() -> Problem {
+    ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap()
+}
+
+fn oscillator_f64_problem() -> Problem {
+    ODEProblem::new(
+        oscillator_rhs(),
+        array![0.0, 1.0],
+        (0.0, std::f64::consts::PI),
+    )
+    .unwrap()
+}
+
+fn check_midpoints(sol: &raznoor::ODESolution<f64>, start: usize, n: usize, tol: f64, label: &str) {
+    let max_i = (start + n).min(sol.t.len().saturating_sub(1));
+    for i in start..max_i {
         let t_mid = f64::midpoint(sol.t[i], sol.t[i + 1]);
         let diff = (sol.interpolate(t_mid).unwrap()[0] - linear_exact(t_mid)).abs();
         assert!(
@@ -35,91 +52,84 @@ fn check_first_intervals(sol: &raznoor::ODESolution<f64>, n: usize, tol: f64, la
     }
 }
 
+fn check_osc_off_grid(sol: &raznoor::ODESolution<f64>, tol: f64, label: &str) {
+    for &t in &[0.05, 0.55, 1.05, 1.55, 2.05, 2.55] {
+        let u = sol.interpolate(t).unwrap();
+        assert!((u[0] - t.sin()).abs() < tol, "{label} osc u[0] at t={t}");
+        assert!((u[1] - t.cos()).abs() < tol, "{label} osc u[1] at t={t}");
+    }
+}
+
+fn check_exact_at_grid(sol: &raznoor::ODESolution<f64>) {
+    for i in 0..sol.t.len() {
+        let val = sol.interpolate(sol.t[i]).unwrap();
+        assert!((val[0] - sol.u[[i, 0]]).abs() < 1e-14, "diff at t[{i}]");
+    }
+}
+
+fn check_f32_midpoints(sol: &raznoor::ODESolution<f32>, start: usize, n: usize, tol: f32) {
+    let max_i = (start + n).min(sol.t.len().saturating_sub(1));
+    for i in start..max_i {
+        let t_mid = f32::midpoint(sol.t[i], sol.t[i + 1]);
+        let val = sol.interpolate(t_mid).unwrap();
+        let diff = (val[0] - linear_exact(f64::from(t_mid)) as f32).abs();
+        assert!(diff < tol, "f32 midpoint {t_mid}: error = {diff}");
+    }
+}
+
 // ---------------------------------------------------------------------------
-// ERK fixed-step (RK4, order 4)
+// Midpoint tests
 // ---------------------------------------------------------------------------
 
 #[test]
 fn erk4_linear_midpoint() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
+    let prob = linear_f64_problem();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
         .unwrap()
         .with_store_derivatives(true)
         .solve(&prob)
         .unwrap();
-    check_first_intervals(&sol, 5, 2e-4, "RK4");
+    check_midpoints(&sol, 0, 5, 2e-4, "RK4");
 }
 
-// ---------------------------------------------------------------------------
-// IRK fixed-step (Backward Euler, order 1)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn be_linear_midpoint() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
-    let sol = FixedStepODESolver::new(BACKWARD_EULER, 0.1)
+#[rstest]
+#[case::be(BACKWARD_EULER, 0.1, 0, 3, 5e-2, "BE")]
+#[case::cn(CRANK_NICOLSON, 0.2, 0, 3, 1e-2, "CN")]
+fn irk_linear_midpoint(
+    #[case] method: ImplicitRungeKuttaMethod<f64>,
+    #[case] dt: f64,
+    #[case] start: usize,
+    #[case] n: usize,
+    #[case] tol: f64,
+    #[case] label: &str,
+) {
+    let prob = linear_f64_problem();
+    let sol = FixedStepODESolver::new(method, dt)
         .unwrap()
         .with_store_derivatives(true)
         .solve(&prob)
         .unwrap();
-    check_first_intervals(&sol, 3, 5e-2, "BE");
+    check_midpoints(&sol, start, n, tol, label);
 }
 
-// ---------------------------------------------------------------------------
-// IRK fixed-step (Crank-Nicolson, order 2)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn cn_linear_midpoint() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
-    let sol = FixedStepODESolver::new(CRANK_NICOLSON, 0.2)
+#[rstest]
+#[case::bdf2(BDF2, 0.1, 1, 3, 4e-2, "BDF2")]
+#[case::bdf4(BDF4, 0.2, 4, 3, 3e-1, "BDF4")]
+fn bdf_linear_midpoint(
+    #[case] method: BDFMethod,
+    #[case] dt: f64,
+    #[case] start: usize,
+    #[case] n: usize,
+    #[case] tol: f64,
+    #[case] label: &str,
+) {
+    let prob = linear_f64_problem();
+    let sol = FixedStepODESolver::new(method, dt)
         .unwrap()
         .with_store_derivatives(true)
         .solve(&prob)
         .unwrap();
-    check_first_intervals(&sol, 3, 1e-2, "CN");
-}
-
-// ---------------------------------------------------------------------------
-// BDF fixed-step (BDF2, order 2, skip startup)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn bdf2_linear_midpoint() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
-    let sol = FixedStepODESolver::new(BDF2, 0.1)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-    // BDF2 startup interval [0, 0.1] uses BDF1; test from interval 1 onward
-    let max_i = (1 + 3).min(sol.t.len().saturating_sub(1));
-    for i in 1..max_i {
-        let t_mid = f64::midpoint(sol.t[i], sol.t[i + 1]);
-        let diff = (sol.interpolate(t_mid).unwrap()[0] - linear_exact(t_mid)).abs();
-        assert!(diff < 4e-2, "BDF2 midpoint {t_mid}: error = {diff}");
-    }
-}
-
-// ---------------------------------------------------------------------------
-// BDF fixed-step (BDF4, order 4, skip startup)
-// ---------------------------------------------------------------------------
-
-#[test]
-fn bdf4_linear_midpoint() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
-    let sol = FixedStepODESolver::new(BDF4, 0.2)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-    // BDF4 full order starts at step 4; test from interval 4 onward
-    let max_i = (4 + 3).min(sol.t.len().saturating_sub(1));
-    for i in 4..max_i {
-        let t_mid = f64::midpoint(sol.t[i], sol.t[i + 1]);
-        let diff = (sol.interpolate(t_mid).unwrap()[0] - linear_exact(t_mid)).abs();
-        assert!(diff < 3e-1, "BDF4 midpoint {t_mid}: error = {diff}");
-    }
+    check_midpoints(&sol, start, n, tol, label);
 }
 
 // ---------------------------------------------------------------------------
@@ -145,68 +155,24 @@ fn dopri54_linear_midpoint() {
 // Oscillator: off-grid points
 // ---------------------------------------------------------------------------
 
-#[test]
-fn erk4_oscillator_off_grid() {
-    let prob = ODEProblem::new(
-        oscillator_rhs(),
-        array![0.0, 1.0],
-        (0.0, std::f64::consts::PI),
-    )
-    .unwrap();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-
-    for &t in &[0.05, 0.55, 1.05, 1.55, 2.05, 2.55] {
-        let u = sol.interpolate(t).unwrap();
-        assert!((u[0] - t.sin()).abs() < 2e-4, "RK4 osc u[0] at t={t}");
-        assert!((u[1] - t.cos()).abs() < 2e-4, "RK4 osc u[1] at t={t}");
-    }
+macro_rules! osc_off_grid_test {
+    ($name:ident, $method:expr, $dt:expr, $tol:expr, $label:expr) => {
+        #[test]
+        fn $name() {
+            let prob = oscillator_f64_problem();
+            let sol = FixedStepODESolver::new($method, $dt)
+                .unwrap()
+                .with_store_derivatives(true)
+                .solve(&prob)
+                .unwrap();
+            check_osc_off_grid(&sol, $tol, $label);
+        }
+    };
 }
 
-#[test]
-fn cn_oscillator_off_grid() {
-    let prob = ODEProblem::new(
-        oscillator_rhs(),
-        array![0.0, 1.0],
-        (0.0, std::f64::consts::PI),
-    )
-    .unwrap();
-    let sol = FixedStepODESolver::new(CRANK_NICOLSON, 0.1)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-
-    for &t in &[0.05, 0.55, 1.05, 1.55, 2.05, 2.55] {
-        let u = sol.interpolate(t).unwrap();
-        assert!((u[0] - t.sin()).abs() < 2e-3, "CN osc u[0] at t={t}");
-        assert!((u[1] - t.cos()).abs() < 2e-3, "CN osc u[1] at t={t}");
-    }
-}
-
-#[test]
-fn bdf2_oscillator_off_grid() {
-    let prob = ODEProblem::new(
-        oscillator_rhs(),
-        array![0.0, 1.0],
-        (0.0, std::f64::consts::PI),
-    )
-    .unwrap();
-    let sol = FixedStepODESolver::new(BDF2, 0.05)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-
-    for &t in &[0.05, 0.55, 1.05, 1.55, 2.05, 2.55] {
-        let u = sol.interpolate(t).unwrap();
-        assert!((u[0] - t.sin()).abs() < 5e-3, "BDF2 osc u[0] at t={t}");
-        assert!((u[1] - t.cos()).abs() < 5e-3, "BDF2 osc u[1] at t={t}");
-    }
-}
+osc_off_grid_test!(erk4_oscillator_off_grid, RUNGE_KUTTA_4, 0.1, 2e-4, "RK4");
+osc_off_grid_test!(cn_oscillator_off_grid, CRANK_NICOLSON, 0.1, 2e-3, "CN");
+osc_off_grid_test!(bdf2_oscillator_off_grid, BDF2, 0.05, 5e-3, "BDF2");
 
 // ---------------------------------------------------------------------------
 // No derivative data
@@ -214,7 +180,7 @@ fn bdf2_oscillator_off_grid() {
 
 #[test]
 fn no_derivative_returns_err() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
+    let prob = linear_f64_problem();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
         .unwrap()
         .with_store_derivatives(false)
@@ -233,7 +199,7 @@ fn no_derivative_returns_err() {
 
 #[test]
 fn interpolate_before_range() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
+    let prob = linear_f64_problem();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
         .unwrap()
         .with_store_derivatives(true)
@@ -247,7 +213,7 @@ fn interpolate_before_range() {
 
 #[test]
 fn interpolate_after_range() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
+    let prob = linear_f64_problem();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
         .unwrap()
         .with_store_derivatives(true)
@@ -284,59 +250,26 @@ fn single_step_interpolation() {
 // f32 precision
 // ---------------------------------------------------------------------------
 
-#[test]
-fn erk4_linear_f32() {
-    let rhs: fn(f32, &Array1<f32>) -> Array1<f32> = |t, u| array![2.0_f32.mul_add(t, u[0])];
-    let prob = ODEProblem::new(rhs, array![linear_exact(0.0) as f32], (0.0_f32, 2.0_f32)).unwrap();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1_f32)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-    let max_i = 5.min(sol.t.len().saturating_sub(1));
-    for i in 0..max_i {
-        let t_mid = f32::midpoint(sol.t[i], sol.t[i + 1]);
-        let val = sol.interpolate(t_mid).unwrap();
-        let diff = (val[0] - linear_exact(f64::from(t_mid)) as f32).abs();
-        assert!(diff < 5e-3_f32, "f32 RK4 midpoint {t_mid}: error = {diff}");
-    }
+macro_rules! linear_f32_test {
+    ($name:ident, $method:expr, $dt:expr, $start:expr, $n:expr, $tol:expr) => {
+        #[test]
+        fn $name() {
+            let rhs: fn(f32, &Array1<f32>) -> Array1<f32> = |t, u| array![2.0_f32.mul_add(t, u[0])];
+            let prob =
+                ODEProblem::new(rhs, array![linear_exact(0.0) as f32], (0.0_f32, 2.0_f32)).unwrap();
+            let sol = FixedStepODESolver::new($method, $dt)
+                .unwrap()
+                .with_store_derivatives(true)
+                .solve(&prob)
+                .unwrap();
+            check_f32_midpoints(&sol, $start, $n, $tol);
+        }
+    };
 }
 
-#[test]
-fn cn_linear_f32() {
-    let rhs: fn(f32, &Array1<f32>) -> Array1<f32> = |t, u| array![2.0_f32.mul_add(t, u[0])];
-    let prob = ODEProblem::new(rhs, array![linear_exact(0.0) as f32], (0.0_f32, 2.0_f32)).unwrap();
-    let sol = FixedStepODESolver::new(CRANK_NICOLSON, 0.2_f32)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-    let max_i = 3.min(sol.t.len().saturating_sub(1));
-    for i in 0..max_i {
-        let t_mid = f32::midpoint(sol.t[i], sol.t[i + 1]);
-        let val = sol.interpolate(t_mid).unwrap();
-        let diff = (val[0] - linear_exact(f64::from(t_mid)) as f32).abs();
-        assert!(diff < 1e-2_f32, "f32 CN midpoint {t_mid}: error = {diff}");
-    }
-}
-
-#[test]
-fn bdf2_linear_f32() {
-    let rhs: fn(f32, &Array1<f32>) -> Array1<f32> = |t, u| array![2.0_f32.mul_add(t, u[0])];
-    let prob = ODEProblem::new(rhs, array![linear_exact(0.0) as f32], (0.0_f32, 2.0_f32)).unwrap();
-    let sol = FixedStepODESolver::new(BDF2, 0.1_f32)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-    let max_i = (1 + 3).min(sol.t.len().saturating_sub(1));
-    for i in 1..max_i {
-        let t_mid = f32::midpoint(sol.t[i], sol.t[i + 1]);
-        let val = sol.interpolate(t_mid).unwrap();
-        let diff = (val[0] - linear_exact(f64::from(t_mid)) as f32).abs();
-        assert!(diff < 4e-2_f32, "f32 BDF2 midpoint {t_mid}: error = {diff}");
-    }
-}
+linear_f32_test!(erk4_linear_f32, RUNGE_KUTTA_4, 0.1_f32, 0, 5, 5e-3_f32);
+linear_f32_test!(cn_linear_f32, CRANK_NICOLSON, 0.2_f32, 0, 3, 1e-2_f32);
+linear_f32_test!(bdf2_linear_f32, BDF2, 0.1_f32, 1, 3, 4e-2_f32);
 
 // ---------------------------------------------------------------------------
 // Zero-length interval
@@ -359,47 +292,24 @@ fn zero_length_interval() {
 // Exact at grid points — all solver families
 // ---------------------------------------------------------------------------
 
-#[test]
-fn exact_at_grid_points_erk_fixed() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-    for i in 0..sol.t.len() {
-        let val = sol.interpolate(sol.t[i]).unwrap();
-        assert!((val[0] - sol.u[[i, 0]]).abs() < 1e-14, "diff at t[{i}]");
-    }
+macro_rules! exact_at_grid_fixed_test {
+    ($name:ident, $method:expr, $dt:expr) => {
+        #[test]
+        fn $name() {
+            let prob = linear_f64_problem();
+            let sol = FixedStepODESolver::new($method, $dt)
+                .unwrap()
+                .with_store_derivatives(true)
+                .solve(&prob)
+                .unwrap();
+            check_exact_at_grid(&sol);
+        }
+    };
 }
 
-#[test]
-fn exact_at_grid_points_irk_fixed() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
-    let sol = FixedStepODESolver::new(CRANK_NICOLSON, 0.1)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-    for i in 0..sol.t.len() {
-        let val = sol.interpolate(sol.t[i]).unwrap();
-        assert!((val[0] - sol.u[[i, 0]]).abs() < 1e-14, "diff at t[{i}]");
-    }
-}
-
-#[test]
-fn exact_at_grid_points_bdf_fixed() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
-    let sol = FixedStepODESolver::new(BDF2, 0.1)
-        .unwrap()
-        .with_store_derivatives(true)
-        .solve(&prob)
-        .unwrap();
-    for i in 0..sol.t.len() {
-        let val = sol.interpolate(sol.t[i]).unwrap();
-        assert!((val[0] - sol.u[[i, 0]]).abs() < 1e-14, "diff at t[{i}]");
-    }
-}
+exact_at_grid_fixed_test!(exact_at_grid_points_erk_fixed, RUNGE_KUTTA_4, 0.1);
+exact_at_grid_fixed_test!(exact_at_grid_points_irk_fixed, CRANK_NICOLSON, 0.1);
+exact_at_grid_fixed_test!(exact_at_grid_points_bdf_fixed, BDF2, 0.1);
 
 #[test]
 fn exact_at_grid_points_erk_adaptive() {
@@ -409,10 +319,7 @@ fn exact_at_grid_points_erk_adaptive() {
         .with_store_derivatives(true)
         .solve(&prob)
         .unwrap();
-    for i in 0..sol.t.len() {
-        let val = sol.interpolate(sol.t[i]).unwrap();
-        assert!((val[0] - sol.u[[i, 0]]).abs() < 1e-14, "diff at t[{i}]");
-    }
+    check_exact_at_grid(&sol);
 }
 
 // ---------------------------------------------------------------------------
@@ -421,7 +328,7 @@ fn exact_at_grid_points_erk_adaptive() {
 
 #[test]
 fn interpolate_many_consistency() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
+    let prob = linear_f64_problem();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
         .unwrap()
         .with_store_derivatives(true)
@@ -438,7 +345,7 @@ fn interpolate_many_consistency() {
 
 #[test]
 fn interpolate_many_empty() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
+    let prob = linear_f64_problem();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
         .unwrap()
         .with_store_derivatives(true)
@@ -449,7 +356,7 @@ fn interpolate_many_empty() {
 
 #[test]
 fn interpolate_many_no_du_returns_err() {
-    let prob = ODEProblem::new(linear_rhs(), array![linear_exact(0.0)], (0.0, 2.0)).unwrap();
+    let prob = linear_f64_problem();
     let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.1)
         .unwrap()
         .with_store_derivatives(false)
