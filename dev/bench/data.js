@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783634136345,
+  "lastUpdate": 1783670016496,
   "repoUrl": "https://github.com/murenkov/raznoor.rs",
   "entries": {
     "Benchmark": [
@@ -34887,6 +34887,330 @@ window.BENCHMARK_DATA = {
             "name": "precision/RK4_f64",
             "value": 146714,
             "range": "± 861",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ymurenkov@yandex.ru",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "committer": {
+            "email": "17390550+murenkov@users.noreply.github.com",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "distinct": true,
+          "id": "5e87078fc7f1fbce1eb106241158247118f6c732",
+          "message": "test: collapse fixed_step.rs into parameterized rstest functions\n\nReplace near-identical `#[test]` functions with parameterized\n`#[rstest]` functions using `#[case]`:\n\n- `linear_f32` — 7 cases (ERK1–5, Fehlberg45, DOPRI54) with `f32`\n- `linear_f64` — 7 cases (same methods) with `f64`\n- `oscillator_f64` — 7 cases (same methods) with `f64`\n\nEach test body is unchanged; only the method constant is parameterized.",
+          "timestamp": "2026-07-10T10:43:24+03:00",
+          "tree_id": "ee937d6657a27cb0a6c06e997fad04fedfbddb0c",
+          "url": "https://github.com/murenkov/raznoor.rs/commit/5e87078fc7f1fbce1eb106241158247118f6c732"
+        },
+        "date": 1783670016250,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "fixed_step/RK1_f32_coarse",
+            "value": 7811,
+            "range": "± 54",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_coarse",
+            "value": 8227,
+            "range": "± 588",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f32_fine",
+            "value": 79419,
+            "range": "± 667",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_fine",
+            "value": 79084,
+            "range": "± 1944",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_coarse",
+            "value": 10740,
+            "range": "± 98",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_coarse",
+            "value": 10561,
+            "range": "± 205",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_fine",
+            "value": 103517,
+            "range": "± 586",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_fine",
+            "value": 103011,
+            "range": "± 2631",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_coarse",
+            "value": 13087,
+            "range": "± 44",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_coarse",
+            "value": 13051,
+            "range": "± 61",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_fine",
+            "value": 127478,
+            "range": "± 734",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_fine",
+            "value": 126773,
+            "range": "± 644",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_coarse",
+            "value": 15486,
+            "range": "± 91",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_coarse",
+            "value": 15339,
+            "range": "± 339",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_fine",
+            "value": 151072,
+            "range": "± 10235",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_fine",
+            "value": 149492,
+            "range": "± 886",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_coarse",
+            "value": 21865,
+            "range": "± 135",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_coarse",
+            "value": 21552,
+            "range": "± 1056",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_fine",
+            "value": 214958,
+            "range": "± 3413",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_fine",
+            "value": 212133,
+            "range": "± 2708",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_coarse",
+            "value": 22159,
+            "range": "± 127",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_coarse",
+            "value": 21861,
+            "range": "± 78",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_fine",
+            "value": 217902,
+            "range": "± 2175",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_fine",
+            "value": 214824,
+            "range": "± 5762",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_coarse",
+            "value": 25459,
+            "range": "± 100",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_coarse",
+            "value": 25144,
+            "range": "± 119",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_fine",
+            "value": 250749,
+            "range": "± 1200",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_fine",
+            "value": 246911,
+            "range": "± 3325",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f32",
+            "value": 6275,
+            "range": "± 61",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f64",
+            "value": 39974,
+            "range": "± 642",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f32",
+            "value": 6294,
+            "range": "± 39",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f64",
+            "value": 40060,
+            "range": "± 360",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK1_fixed",
+            "value": 945649,
+            "range": "± 11899",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK2_fixed",
+            "value": 1227120,
+            "range": "± 21449",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK3_fixed",
+            "value": 1523165,
+            "range": "± 30183",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK4_fixed",
+            "value": 1798477,
+            "range": "± 11837",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK5_fixed",
+            "value": 2601138,
+            "range": "± 11809",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_fixed",
+            "value": 2660552,
+            "range": "± 20308",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_fixed",
+            "value": 3052925,
+            "range": "± 10511",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_adaptive",
+            "value": 162777,
+            "range": "± 2441",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_adaptive",
+            "value": 163744,
+            "range": "± 671",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK1_100k",
+            "value": 13851593,
+            "range": "± 151448",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK2_100k",
+            "value": 18160628,
+            "range": "± 107859",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK3_100k",
+            "value": 24019910,
+            "range": "± 750948",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK4_100k",
+            "value": 28186363,
+            "range": "± 245636",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK5_100k",
+            "value": 41055312,
+            "range": "± 512059",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/Fehlberg45_100k",
+            "value": 41675336,
+            "range": "± 460924",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/DP45_100k",
+            "value": 47097886,
+            "range": "± 670185",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f32",
+            "value": 150730,
+            "range": "± 771",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f64",
+            "value": 148951,
+            "range": "± 945",
             "unit": "ns/iter"
           }
         ]
