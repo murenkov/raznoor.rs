@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 
+use rstest::rstest;
 use std::sync::Arc;
 
 use ndarray::Array1;
@@ -9,141 +10,101 @@ use raznoor::{
     ODESolver, RUNGE_KUTTA_4,
 };
 
-fn make_event(g: impl Fn(f64, &Array1<f64>) -> f64 + Send + Sync + 'static) -> Event<f64> {
-    Event::new(Arc::new(g), true, EventDirection::Any)
+#[derive(Clone, Copy)]
+enum NoCrossingKind {
+    WrongDirection,
+    NeverCrosses,
 }
 
-#[test]
-fn event_terminal_fixed() {
+#[rstest]
+#[case::terminal_any(true, EventDirection::Any, false)]
+#[case::non_terminal(false, EventDirection::Any, false)]
+#[case::terminal_decreasing(true, EventDirection::Decreasing, false)]
+#[case::terminal_any_adaptive(true, EventDirection::Any, true)]
+fn event_crossing(
+    #[case] terminal: bool,
+    #[case] direction: EventDirection,
+    #[case] use_adaptive: bool,
+) {
     let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-    let event = make_event(|_t: f64, u: &Array1<f64>| u[0] - 0.5);
+    let event = Event::new(
+        Arc::new(|_t: f64, u: &Array1<f64>| u[0] - 0.5),
+        terminal,
+        direction,
+    );
     let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
         .unwrap()
         .with_events(vec![event]);
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
+
+    let sol = if use_adaptive {
+        AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6)
+            .unwrap()
+            .solve(&prob)
+            .unwrap()
+    } else {
+        FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+            .unwrap()
+            .solve(&prob)
+            .unwrap()
+    };
+
     let expected = (2.0_f64).ln();
-    assert!(
-        (sol.t[sol.t.len() - 1] - expected).abs() < 0.01,
-        "terminal event at t={} should be near ln(2)={}",
-        sol.t[sol.t.len() - 1],
-        expected
-    );
     assert!(!sol.events.is_empty(), "should have recorded an event");
     assert!(
         (sol.events[0].t - expected).abs() < 0.01,
         "event time should be near ln(2)"
     );
+
+    if terminal {
+        assert!(
+            (sol.t[sol.t.len() - 1] - expected).abs() < 0.01,
+            "terminal event at t={} should be near ln(2)={}",
+            sol.t[sol.t.len() - 1],
+            expected
+        );
+    } else {
+        assert!(
+            (sol.t[sol.t.len() - 1] - 5.0).abs() < f64::EPSILON,
+            "non-terminal event should integrate to end of tspan"
+        );
+    }
 }
 
-#[test]
-fn event_non_terminal_fixed() {
-    let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-    let event = Event::new(
-        Arc::new(|_t: f64, u: &Array1<f64>| u[0] - 0.5),
-        false,
-        EventDirection::Any,
-    );
-    let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
-        .unwrap()
-        .with_events(vec![event]);
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
+#[rstest]
+#[case::wrong_direction(NoCrossingKind::WrongDirection, 5.0)]
+#[case::never_crosses(NoCrossingKind::NeverCrosses, 1.0)]
+fn event_no_crossing(#[case] kind: NoCrossingKind, #[case] expected_final: f64) {
+    let sol = match kind {
+        NoCrossingKind::WrongDirection => {
+            let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
+            let g = |_t: f64, u: &Array1<f64>| u[0] - 0.5;
+            let event = Event::new(Arc::new(g), true, EventDirection::Increasing);
+            let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
+                .unwrap()
+                .with_events(vec![event]);
+            FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+                .unwrap()
+                .solve(&prob)
+                .unwrap()
+        }
+        NoCrossingKind::NeverCrosses => {
+            let f = |_t: f64, _u: &Array1<f64>| array![1.0];
+            let g = |_t: f64, u: &Array1<f64>| u[0] + 1.0;
+            let event = Event::new(Arc::new(g), true, EventDirection::Any);
+            let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0))
+                .unwrap()
+                .with_events(vec![event]);
+            FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
+                .unwrap()
+                .solve(&prob)
+                .unwrap()
+        }
+    };
     assert!(
-        (sol.t[sol.t.len() - 1] - 5.0).abs() < f64::EPSILON,
-        "non-terminal event should integrate to end of tspan"
-    );
-    assert!(!sol.events.is_empty(), "should have recorded an event");
-}
-
-#[test]
-fn event_direction_decreasing() {
-    let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-    let event = Event::new(
-        Arc::new(|_t: f64, u: &Array1<f64>| u[0] - 0.5),
-        true,
-        EventDirection::Decreasing,
-    );
-    let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
-        .unwrap()
-        .with_events(vec![event]);
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    assert!(
-        (sol.t[sol.t.len() - 1] - (2.0_f64).ln()).abs() < 0.01,
-        "decreasing event should trigger at ln(2)"
-    );
-}
-
-#[test]
-fn event_direction_increasing_no_crossing() {
-    let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-    let event = Event::new(
-        Arc::new(|_t: f64, u: &Array1<f64>| u[0] - 0.5),
-        true,
-        EventDirection::Increasing,
-    );
-    let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
-        .unwrap()
-        .with_events(vec![event]);
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    assert!(
-        (sol.t[sol.t.len() - 1] - 5.0).abs() < f64::EPSILON,
-        "increasing event should not trigger on decreasing function"
+        (sol.t[sol.t.len() - 1] - expected_final).abs() < f64::EPSILON,
+        "should integrate to end of tspan"
     );
     assert!(sol.events.is_empty(), "no events should be recorded");
-}
-
-#[test]
-fn event_no_crossing() {
-    let f = |_t: f64, _u: &Array1<f64>| array![1.0];
-    let event = make_event(|_t: f64, u: &Array1<f64>| u[0] + 1.0);
-    let prob = ODEProblem::new(f, array![0.0], (0.0, 1.0))
-        .unwrap()
-        .with_events(vec![event]);
-    let sol = FixedStepODESolver::new(RUNGE_KUTTA_4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    assert!(
-        (sol.t[sol.t.len() - 1] - 1.0).abs() < f64::EPSILON,
-        "no event should fire"
-    );
-    assert!(sol.events.is_empty(), "no events should be recorded");
-}
-
-#[test]
-fn event_terminal_adaptive() {
-    let f = |_t: f64, u: &Array1<f64>| array![-u[0]];
-    let event = Event::new(
-        Arc::new(|_t: f64, u: &Array1<f64>| u[0] - 0.5),
-        true,
-        EventDirection::Any,
-    );
-    let prob = ODEProblem::new(f, array![1.0], (0.0, 5.0))
-        .unwrap()
-        .with_events(vec![event]);
-    let sol = AdaptiveODESolver::new(DORMAND_PRINCE45, 0.01, 1e-6, 1e-6)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let expected = (2.0_f64).ln();
-    assert!(
-        (sol.t[sol.t.len() - 1] - expected).abs() < 0.01,
-        "terminal adaptive event t={} should be near ln(2)={}",
-        sol.t[sol.t.len() - 1],
-        expected
-    );
-    assert!(!sol.events.is_empty(), "should have recorded an event");
 }
 
 #[test]
