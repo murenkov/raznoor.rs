@@ -2,7 +2,10 @@
 
 use ndarray::Array1;
 use ndarray::array;
-use raznoor::{BDF1, BDF2, BDF3, BDF4, BDF5, BDF6, FixedStepODESolver, ODEProblem, ODESolver};
+use raznoor::{
+    BDF1, BDF2, BDF3, BDF4, BDF5, BDF6, BDFMethod, FixedStepODESolver, ODEProblem, ODESolver,
+};
+use rstest::rstest;
 
 mod common;
 use common::{linear_problem, oscillator_problem, residual};
@@ -35,219 +38,126 @@ fn exp_decay_sin_problem() -> (Problem, f64) {
 
 // --- fixed-step accuracy tests ---
 
-#[test]
-fn bdf1_exp_decay_f64() {
+#[rstest]
+#[case::bdf1(BDF1, vec![0.1, 0.05, 0.01], 1, 0.6)]
+#[case::bdf2(BDF2, vec![0.1, 0.05], 2, 2.0)]
+#[case::bdf3(BDF3, vec![0.1, 0.05], 3, 5.0)]
+fn exp_decay_convergence(
+    #[case] solver: BDFMethod,
+    #[case] dts: Vec<f64>,
+    #[case] order: i32,
+    #[case] tol_factor: f64,
+) {
     let (prob, u_exact) = exp_decay_problem();
-    for dt in &[0.1, 0.05, 0.01] {
-        let sol = FixedStepODESolver::new(BDF1, *dt)
-            .unwrap()
-            .solve(&prob)
-            .unwrap();
-        let u_last = sol.u[[sol.t.len() - 1, 0]];
-        let error = (u_last - u_exact).abs();
-        // BDF1 is O(dt), so dt=0.01 should give error ~0.005
-        assert!(error <= dt * 0.6, "BDF1: error {error} > dt {dt}*0.6");
-    }
-}
-
-#[test]
-fn bdf2_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    for dt in &[0.1, 0.05] {
-        let sol = FixedStepODESolver::new(BDF2, *dt)
-            .unwrap()
-            .solve(&prob)
-            .unwrap();
-        let u_last = sol.u[[sol.t.len() - 1, 0]];
-        let error = (u_last - u_exact).abs();
-        // BDF2 is O(dt²)
-        assert!(error <= dt * dt * 2.0, "BDF2: error {error} > dt²*2");
-    }
-}
-
-#[test]
-fn bdf3_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    for dt in &[0.1, 0.05] {
-        let sol = FixedStepODESolver::new(BDF3, *dt)
-            .unwrap()
-            .solve(&prob)
-            .unwrap();
-        let u_last = sol.u[[sol.t.len() - 1, 0]];
-        let error = (u_last - u_exact).abs();
-        // BDF3 is O(dt³)
-        assert!(error <= dt.powi(3) * 5.0, "BDF3: error {error} > dt³*5");
-    }
-}
-
-#[test]
-fn bdf4_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    let dt = 0.1;
-    let sol = FixedStepODESolver::new(BDF4, dt)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u_last = sol.u[[sol.t.len() - 1, 0]];
-    let error = (u_last - u_exact).abs();
-    // With 10 steps including 3 startup steps, overall error ~0.005
-    assert!(error <= 5e-3, "BDF4: error {error} > 5e-3");
-    // Verify convergence order by comparing coarse and fine grids.
-    let dt2 = 0.05;
-    let sol2 = FixedStepODESolver::new(BDF4, dt2)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u2 = sol2.u[[sol2.t.len() - 1, 0]];
-    let error2 = (u2 - u_exact).abs();
-    let ratio = error / error2;
-    // Startup phase reduces effective order on coarse grids.
-    assert!(ratio > 3.0, "BDF4: error ratio {ratio} too small");
-}
-
-#[test]
-fn bdf5_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    let dt = 0.2;
-    let sol = FixedStepODESolver::new(BDF5, dt)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u_last = sol.u[[sol.t.len() - 1, 0]];
-    let error = (u_last - u_exact).abs();
-    assert!(error <= 1e-2, "BDF5: error {error} > 1e-2");
-    let dt2 = 0.1;
-    let sol2 = FixedStepODESolver::new(BDF5, dt2)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u2 = sol2.u[[sol2.t.len() - 1, 0]];
-    let error2 = (u2 - u_exact).abs();
-    let ratio = error / error2;
-    assert!(ratio > 3.0, "BDF5: error ratio {ratio} too small");
-}
-
-#[test]
-fn bdf6_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    let dt = 0.2;
-    let sol = FixedStepODESolver::new(BDF6, dt)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u_last = sol.u[[sol.t.len() - 1, 0]];
-    let error = (u_last - u_exact).abs();
-    assert!(error <= 1e-2, "BDF6: error {error} > 1e-2");
-    let dt2 = 0.1;
-    let sol2 = FixedStepODESolver::new(BDF6, dt2)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u2 = sol2.u[[sol2.t.len() - 1, 0]];
-    let error2 = (u2 - u_exact).abs();
-    let ratio = error / error2;
-    assert!(ratio > 3.0, "BDF6: error ratio {ratio} too small");
-}
-
-// --- Non-trivial RHS tests ---
-
-#[test]
-fn bdf2_exp_decay_sin_f64() {
-    let (prob, u_exact) = exp_decay_sin_problem();
-    for dt in &[0.1, 0.05] {
-        let sol = FixedStepODESolver::new(BDF2, *dt)
-            .unwrap()
-            .solve(&prob)
-            .unwrap();
-        let u_last = sol.u[[sol.t.len() - 1, 0]];
-        let error = (u_last - u_exact).abs();
-        assert!(error <= dt * dt * 3.0, "BDF2 sin: error {error} > dt²*3");
-    }
-}
-
-#[test]
-fn bdf3_exp_decay_sin_f64() {
-    let (prob, u_exact) = exp_decay_sin_problem();
-    for dt in &[0.2, 0.1] {
-        let sol = FixedStepODESolver::new(BDF3, *dt)
+    for dt in &dts {
+        let sol = FixedStepODESolver::new(solver, *dt)
             .unwrap()
             .solve(&prob)
             .unwrap();
         let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
         assert!(
-            error <= dt.powi(3) * 10.0,
-            "BDF3 sin: error {error} > dt³*10"
+            error <= dt.powi(order) * tol_factor,
+            "BDF{}: error {error} > dt^{order}*{tol_factor}",
+            solver.order
+        );
+    }
+}
+
+#[rstest]
+#[case::bdf4(BDF4, 0.1, 5e-3, 0.05, 3.0)]
+#[case::bdf5(BDF5, 0.2, 1e-2, 0.1, 3.0)]
+#[case::bdf6(BDF6, 0.2, 1e-2, 0.1, 3.0)]
+fn exp_decay_convergence_high_order(
+    #[case] solver: BDFMethod,
+    #[case] dt1: f64,
+    #[case] threshold: f64,
+    #[case] dt2: f64,
+    #[case] min_ratio: f64,
+) {
+    let (prob, u_exact) = exp_decay_problem();
+    let sol = FixedStepODESolver::new(solver, dt1)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    let u_last = sol.u[[sol.t.len() - 1, 0]];
+    let error = (u_last - u_exact).abs();
+    assert!(
+        error <= threshold,
+        "BDF{}: error {error} > {threshold}",
+        solver.order
+    );
+    let sol2 = FixedStepODESolver::new(solver, dt2)
+        .unwrap()
+        .solve(&prob)
+        .unwrap();
+    let u2 = sol2.u[[sol2.t.len() - 1, 0]];
+    let error2 = (u2 - u_exact).abs();
+    let ratio = error / error2;
+    assert!(
+        ratio > min_ratio,
+        "BDF{}: error ratio {ratio} too small",
+        solver.order
+    );
+}
+
+// --- Non-trivial RHS tests ---
+
+#[rstest]
+#[case::bdf2(BDF2, 0.1, 0.05, 2, 3.0)]
+#[case::bdf3(BDF3, 0.2, 0.1, 3, 10.0)]
+fn exp_decay_sin_convergence(
+    #[case] solver: BDFMethod,
+    #[case] dt1: f64,
+    #[case] dt2: f64,
+    #[case] order: i32,
+    #[case] factor: f64,
+) {
+    let (prob, u_exact) = exp_decay_sin_problem();
+    for dt in &[dt1, dt2] {
+        let sol = FixedStepODESolver::new(solver, *dt)
+            .unwrap()
+            .solve(&prob)
+            .unwrap();
+        let u_last = sol.u[[sol.t.len() - 1, 0]];
+        let error = (u_last - u_exact).abs();
+        assert!(
+            error <= dt.powi(order) * factor,
+            "BDF{} sin: error {error} > dt^{order}*{factor}",
+            solver.order
         );
     }
 }
 
 // --- Stiff problem tests ---
 
-#[test]
-fn bdf1_stiff_f64() {
-    let (prob, u_exact) = stiff_problem();
-    let dt = 0.001;
-    let sol = FixedStepODESolver::new(BDF1, dt)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u_last = sol.u[[sol.t.len() - 1, 0]];
-    let error = (u_last - u_exact).abs();
-    assert!(error < 0.1, "BDF1 stiff: error {error} >= 0.1");
-}
-
-#[test]
-fn bdf2_stiff_f64() {
+#[rstest]
+#[case::bdf1(BDF1, 0.001, 0.1)]
+#[case::bdf2(BDF2, 0.01, 0.05)]
+#[case::bdf3(BDF3, 0.01, 0.05)]
+#[case::bdf4(BDF4, 0.01, 0.05)]
+fn stiff_convergence(#[case] solver: BDFMethod, #[case] dt: f64, #[case] threshold: f64) {
     let (prob, _u_exact) = stiff_problem();
-    let dt = 0.01;
-    let sol = FixedStepODESolver::new(BDF2, dt)
+    let sol = FixedStepODESolver::new(solver, dt)
         .unwrap()
         .solve(&prob)
         .unwrap();
     let u_last = sol.u[[sol.t.len() - 1, 0]];
     assert!(
-        (u_last - 0.0_f64).abs() < 0.05,
-        "BDF2 stiff: |u_last| = {u_last} >= 0.05"
-    );
-}
-
-#[test]
-fn bdf3_stiff_f64() {
-    let (prob, _u_exact) = stiff_problem();
-    let dt = 0.01;
-    let sol = FixedStepODESolver::new(BDF3, dt)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u_last = sol.u[[sol.t.len() - 1, 0]];
-    assert!(
-        (u_last - 0.0_f64).abs() < 0.05,
-        "BDF3 stiff: |u_last| = {u_last} >= 0.05"
-    );
-}
-
-#[test]
-fn bdf4_stiff_f64() {
-    let (prob, _u_exact) = stiff_problem();
-    let dt = 0.01;
-    let sol = FixedStepODESolver::new(BDF4, dt)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u_last = sol.u[[sol.t.len() - 1, 0]];
-    assert!(
-        (u_last - 0.0_f64).abs() < 0.05,
-        "BDF4 stiff: |u_last| = {u_last} >= 0.05"
+        (u_last - 0.0_f64).abs() < threshold,
+        "BDF{} stiff: |u_last| = {u_last} >= {threshold}",
+        solver.order
     );
 }
 
 // --- Multi-variable system tests ---
 
-#[test]
-fn bdf1_oscillator_f64() {
+#[rstest]
+#[case::bdf1(BDF1, 0.05)]
+#[case::bdf2(BDF2, 0.02)]
+fn oscillator_convergence(#[case] solver: BDFMethod, #[case] threshold: f64) {
     let (prob, reference) = oscillator_problem::<f64>();
-    let sol = FixedStepODESolver::new(BDF1, 0.01)
+    let sol = FixedStepODESolver::new(solver, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
@@ -255,16 +165,21 @@ fn bdf1_oscillator_f64() {
         let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(
-            res <= 0.05,
-            "BDF1 oscillator var {i}: residual {res} > 0.05"
+            res <= threshold,
+            "BDF{} oscillator var {i}: residual {res} > {threshold}",
+            solver.order
         );
     }
 }
 
-#[test]
-fn bdf2_oscillator_f64() {
-    let (prob, reference) = oscillator_problem::<f64>();
-    let sol = FixedStepODESolver::new(BDF2, 0.01)
+// --- Linear problem (from common) ---
+
+#[rstest]
+#[case::bdf2(BDF2)]
+#[case::bdf3(BDF3)]
+fn linear_f64_convergence(#[case] solver: BDFMethod) {
+    let (prob, reference) = linear_problem::<f64>();
+    let sol = FixedStepODESolver::new(solver, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
@@ -273,42 +188,13 @@ fn bdf2_oscillator_f64() {
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
         assert!(
             res <= 0.02,
-            "BDF2 oscillator var {i}: residual {res} > 0.02"
+            "BDF{} linear var {i}: residual {res} > 0.02",
+            solver.order
         );
     }
 }
 
-// --- Linear problem (from common) ---
-
-#[test]
-fn bdf2_linear_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(BDF2, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.02, "BDF2 linear var {i}: residual {res} > 0.02");
-    }
-}
-
-#[test]
-fn bdf3_linear_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(BDF3, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.02, "BDF3 linear var {i}: residual {res} > 0.02");
-    }
-}
-
-// --- f32 precision test ---
+// --- f32 precision tests ---
 
 #[test]
 fn bdf1_exp_decay_f32() {
@@ -327,66 +213,15 @@ fn bdf1_exp_decay_f32() {
     assert!((u_last - u_exact).abs() < 0.01, "BDF1 f32: error too large");
 }
 
-#[test]
-fn bdf2_linear_f32() {
+#[rstest]
+#[case::bdf2(BDF2)]
+#[case::bdf3(BDF3)]
+#[case::bdf4(BDF4)]
+#[case::bdf5(BDF5)]
+#[case::bdf6(BDF6)]
+fn linear_f32_convergence(#[case] solver: BDFMethod) {
     let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(BDF2, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn bdf3_linear_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(BDF3, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn bdf4_linear_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(BDF4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn bdf5_linear_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(BDF5, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn bdf6_linear_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(BDF6, 0.01)
+    let sol = FixedStepODESolver::new(solver, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
