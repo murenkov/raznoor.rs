@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783679557605,
+  "lastUpdate": 1783681209421,
   "repoUrl": "https://github.com/murenkov/raznoor.rs",
   "entries": {
     "Benchmark": [
@@ -36183,6 +36183,330 @@ window.BENCHMARK_DATA = {
             "name": "precision/RK4_f64",
             "value": 146827,
             "range": "± 4520",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "ymurenkov@yandex.ru",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "committer": {
+            "email": "17390550+murenkov@users.noreply.github.com",
+            "name": "Yaroslav Murenkov",
+            "username": "murenkov"
+          },
+          "distinct": true,
+          "id": "25088ef7a3164cdea3bcafdf4ae3e43f55fd5d03",
+          "message": "test(bdf): collapse repetitive test groups with rstest\n\nReplace individual `#[test]` functions in `tests/bdf.rs` with\nparameterized `#[rstest]` functions. Each group of structurally\nidentical tests (varying only by BDF order and numeric tolerances)\nis now a single function with `#[case]` parameters:\n\n- `exp_decay_convergence` — BDF1–3 loop-over-dt pattern\n- `exp_decay_convergence_high_order` — BDF4–6 absolute + ratio pattern\n- `exp_decay_sin_convergence` — BDF2–3\n- `stiff_convergence` — BDF1–4\n- `oscillator_convergence` — BDF1–2\n- `linear_f64_convergence` — BDF2–3\n- `linear_f32_convergence` — BDF2–6\n\nThree standalone tests (`bdf1_exp_decay_f32`, `bdf1_newton_fallback`,\n`bdf1_matches_backward_euler`) are kept as-is.\n\nAll 24 test cases still pass with identical assertions.",
+          "timestamp": "2026-07-10T13:49:53+03:00",
+          "tree_id": "c4006ad56ed41be39294b6ba51a5d551379350ca",
+          "url": "https://github.com/murenkov/raznoor.rs/commit/25088ef7a3164cdea3bcafdf4ae3e43f55fd5d03"
+        },
+        "date": 1783681209158,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "fixed_step/RK1_f32_coarse",
+            "value": 7713,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_coarse",
+            "value": 8168,
+            "range": "± 94",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f32_fine",
+            "value": 79213,
+            "range": "± 2737",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK1_f64_fine",
+            "value": 79039,
+            "range": "± 423",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_coarse",
+            "value": 10583,
+            "range": "± 66",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_coarse",
+            "value": 10505,
+            "range": "± 177",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f32_fine",
+            "value": 102379,
+            "range": "± 299",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK2_f64_fine",
+            "value": 102264,
+            "range": "± 685",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_coarse",
+            "value": 13045,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_coarse",
+            "value": 13089,
+            "range": "± 40",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f32_fine",
+            "value": 127120,
+            "range": "± 836",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK3_f64_fine",
+            "value": 126828,
+            "range": "± 1065",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_coarse",
+            "value": 15520,
+            "range": "± 107",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_coarse",
+            "value": 15448,
+            "range": "± 69",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f32_fine",
+            "value": 151162,
+            "range": "± 508",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK4_f64_fine",
+            "value": 150335,
+            "range": "± 3055",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_coarse",
+            "value": 21917,
+            "range": "± 59",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_coarse",
+            "value": 21674,
+            "range": "± 126",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f32_fine",
+            "value": 215243,
+            "range": "± 3126",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/RK5_f64_fine",
+            "value": 212843,
+            "range": "± 1136",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_coarse",
+            "value": 22240,
+            "range": "± 222",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_coarse",
+            "value": 21904,
+            "range": "± 358",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f32_fine",
+            "value": 217756,
+            "range": "± 2223",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/Fehlberg45_f64_fine",
+            "value": 214825,
+            "range": "± 746",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_coarse",
+            "value": 25518,
+            "range": "± 270",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_coarse",
+            "value": 25207,
+            "range": "± 825",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f32_fine",
+            "value": 251116,
+            "range": "± 1255",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fixed_step/DP45_f64_fine",
+            "value": 247303,
+            "range": "± 1733",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f32",
+            "value": 6270,
+            "range": "± 26",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/Fehlberg45_f64",
+            "value": 40247,
+            "range": "± 215",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f32",
+            "value": 6269,
+            "range": "± 28",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "adaptive/DP45_f64",
+            "value": 40458,
+            "range": "± 570",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK1_fixed",
+            "value": 909996,
+            "range": "± 14552",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK2_fixed",
+            "value": 1187522,
+            "range": "± 13010",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK3_fixed",
+            "value": 1480907,
+            "range": "± 7424",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK4_fixed",
+            "value": 1757609,
+            "range": "± 9121",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/RK5_fixed",
+            "value": 2559424,
+            "range": "± 9745",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_fixed",
+            "value": 2601932,
+            "range": "± 9389",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_fixed",
+            "value": 2997400,
+            "range": "± 6979",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/Fehlberg45_adaptive",
+            "value": 171682,
+            "range": "± 1807",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "system/DP45_adaptive",
+            "value": 169777,
+            "range": "± 1364",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK1_100k",
+            "value": 13198725,
+            "range": "± 50927",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK2_100k",
+            "value": 18037911,
+            "range": "± 123423",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK3_100k",
+            "value": 22953978,
+            "range": "± 84873",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK4_100k",
+            "value": 27901170,
+            "range": "± 227945",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/RK5_100k",
+            "value": 40428041,
+            "range": "± 340829",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/Fehlberg45_100k",
+            "value": 40791197,
+            "range": "± 310912",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "large/DP45_100k",
+            "value": 46664803,
+            "range": "± 668448",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f32",
+            "value": 150724,
+            "range": "± 1018",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "precision/RK4_f64",
+            "value": 149511,
+            "range": "± 2059",
             "unit": "ns/iter"
           }
         ]
