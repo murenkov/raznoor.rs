@@ -1,5 +1,6 @@
 #![allow(missing_docs)]
 
+use rstest::rstest;
 use std::sync::Arc;
 
 use ndarray::Array1;
@@ -69,23 +70,17 @@ fn solve_dt_larger_than_tspan() {
     );
 }
 
-#[test]
-fn solve_nan_initial_condition() {
+#[rstest]
+#[case::nan(f64::NAN, (0.0, 1.0))]
+#[case::inf(f64::INFINITY, (0.0, 1.0))]
+#[case::adaptive_nan(f64::NAN, (0.0, 0.0))]
+#[case::adaptive_inf(f64::INFINITY, (0.0, 0.0))]
+fn solve_invalid_initial_condition(#[case] initial: f64, #[case] tspan: (f64, f64)) {
     let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-    let result = ODEProblem::new(f, array![f64::NAN], (0.0, 1.0));
+    let result = ODEProblem::new(f, array![initial], tspan);
     assert!(
         matches!(result, Err(SolverError::InvalidInitialCondition)),
-        "ODEProblem::new with NaN initial condition should return InvalidInitialCondition error"
-    );
-}
-
-#[test]
-fn solve_inf_initial_condition() {
-    let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-    let result = ODEProblem::new(f, array![f64::INFINITY], (0.0, 1.0));
-    assert!(
-        matches!(result, Err(SolverError::InvalidInitialCondition)),
-        "ODEProblem::new with Inf initial condition should return InvalidInitialCondition error"
+        "ODEProblem::new with invalid initial condition should return InvalidInitialCondition error"
     );
 }
 
@@ -123,26 +118,6 @@ fn solve_negative_direction() {
             "time should be monotonically decreasing"
         );
     }
-}
-
-#[test]
-fn solve_adaptive_nan_initial_condition() {
-    let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-    let result = ODEProblem::new(f, array![f64::NAN], (0.0, 0.0));
-    assert!(
-        matches!(result, Err(SolverError::InvalidInitialCondition)),
-        "ODEProblem::new with NaN initial condition should return InvalidInitialCondition error"
-    );
-}
-
-#[test]
-fn solve_adaptive_inf_initial_condition() {
-    let f = |_t: f64, _u: &Array1<f64>| array![0.0];
-    let result = ODEProblem::new(f, array![f64::INFINITY], (0.0, 0.0));
-    assert!(
-        matches!(result, Err(SolverError::InvalidInitialCondition)),
-        "ODEProblem::new with Inf initial condition should return InvalidInitialCondition error"
-    );
 }
 
 #[test]
