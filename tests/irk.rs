@@ -4,8 +4,9 @@ use ndarray::Array1;
 use ndarray::array;
 use raznoor::{
     BACKWARD_EULER, CRANK_NICOLSON, FixedStepODESolver, GAUSS_LEGENDRE_4, IMPLICIT_MIDPOINT,
-    ODEProblem, ODESolver, RADAU_IIA_3, RADAU_IIA_5,
+    ImplicitRungeKuttaMethod, ODEProblem, ODESolver, RADAU_IIA_3, RADAU_IIA_5,
 };
+use rstest::rstest;
 
 mod common;
 use common::{linear_problem, oscillator_problem, residual};
@@ -29,92 +30,50 @@ fn stiff_problem() -> (Problem, f64) {
 
 // --- fixed-step accuracy tests ---
 
-#[test]
-fn backward_euler_exp_decay_f64() {
+fn be_bound(dt: f64) -> f64 {
+    dt * 0.6
+}
+fn midpoint_bound(dt: f64) -> f64 {
+    dt * dt * 2.0
+}
+fn cn_bound(dt: f64) -> f64 {
+    dt * dt * 2.0
+}
+fn radau3_bound(dt: f64) -> f64 {
+    dt.powi(3) * 5.0
+}
+fn radau5_bound(dt: f64) -> f64 {
+    dt.powi(5) * 20.0
+}
+fn gl4_bound(dt: f64) -> f64 {
+    dt.powi(4) * 10.0
+}
+
+#[rstest]
+#[case::be(BACKWARD_EULER, &[0.1, 0.05, 0.01] as &[f64], be_bound)]
+#[case::midpoint(IMPLICIT_MIDPOINT, &[0.1, 0.05] as &[f64], midpoint_bound)]
+#[case::cn(CRANK_NICOLSON, &[0.1, 0.05] as &[f64], cn_bound)]
+#[case::radau3(RADAU_IIA_3, &[0.1, 0.05] as &[f64], radau3_bound)]
+#[case::radau5(RADAU_IIA_5, &[0.2] as &[f64], radau5_bound)]
+#[case::gl4(GAUSS_LEGENDRE_4, &[0.2, 0.1] as &[f64], gl4_bound)]
+fn irk_exp_decay_convergence(
+    #[case] method: ImplicitRungeKuttaMethod<f64>,
+    #[case] dts: &[f64],
+    #[case] error_bound: fn(f64) -> f64,
+) {
     let (prob, u_exact) = exp_decay_problem();
-    for dt in &[0.1, 0.05, 0.01] {
-        let sol = FixedStepODESolver::new(BACKWARD_EULER, *dt)
+    for &dt in dts {
+        let sol = FixedStepODESolver::new(method, dt)
             .unwrap()
             .solve(&prob)
             .unwrap();
         let u_last = sol.u[[sol.t.len() - 1, 0]];
         let error = (u_last - u_exact).abs();
-        // Backward Euler is O(dt), so dt=0.01 should give error ~0.005
-        assert!(error <= dt * 0.6, "BE: error {error} > dt {dt}*0.6");
-    }
-}
-
-#[test]
-fn implicit_midpoint_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    for dt in &[0.1, 0.05] {
-        let sol = FixedStepODESolver::new(IMPLICIT_MIDPOINT, *dt)
-            .unwrap()
-            .solve(&prob)
-            .unwrap();
-        let u_last = sol.u[[sol.t.len() - 1, 0]];
-        let error = (u_last - u_exact).abs();
-        // Implicit midpoint is O(dt²)
-        assert!(error <= dt * dt * 2.0, "Midpoint: error {error} > dt²*2");
-    }
-}
-
-#[test]
-fn crank_nicolson_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    for dt in &[0.1, 0.05] {
-        let sol = FixedStepODESolver::new(CRANK_NICOLSON, *dt)
-            .unwrap()
-            .solve(&prob)
-            .unwrap();
-        let u_last = sol.u[[sol.t.len() - 1, 0]];
-        let error = (u_last - u_exact).abs();
-        // Crank-Nicolson is O(dt²)
-        assert!(error <= dt * dt * 2.0, "CN: error {error} > dt²*2");
-    }
-}
-
-#[test]
-fn radau_ii_3_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    for dt in &[0.1, 0.05] {
-        let sol = FixedStepODESolver::new(RADAU_IIA_3, *dt)
-            .unwrap()
-            .solve(&prob)
-            .unwrap();
-        let u_last = sol.u[[sol.t.len() - 1, 0]];
-        let error = (u_last - u_exact).abs();
-        // Radau IIA 2-stage is O(dt³)
-        assert!(error <= dt * dt * dt * 5.0, "Radau3: error {error} > dt³*5");
-    }
-}
-
-#[test]
-fn radau_ii_5_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    let dt = 0.2;
-    let sol = FixedStepODESolver::new(RADAU_IIA_5, dt)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u_last = sol.u[[sol.t.len() - 1, 0]];
-    let error = (u_last - u_exact).abs();
-    // Radau IIA 3-stage is O(dt⁵)
-    assert!(error <= dt.powi(5) * 20.0, "Radau5: error {error} > dt⁵*20");
-}
-
-#[test]
-fn gauss_legendre_4_exp_decay_f64() {
-    let (prob, u_exact) = exp_decay_problem();
-    for dt in &[0.2, 0.1] {
-        let sol = FixedStepODESolver::new(GAUSS_LEGENDRE_4, *dt)
-            .unwrap()
-            .solve(&prob)
-            .unwrap();
-        let u_last = sol.u[[sol.t.len() - 1, 0]];
-        let error = (u_last - u_exact).abs();
-        // Gauss-Legendre 2-stage is O(dt⁴)
-        assert!(error <= dt.powi(4) * 10.0, "GL4: error {error} > dt⁴*10");
+        assert!(
+            error <= error_bound(dt),
+            "error {error} > {}",
+            error_bound(dt)
+        );
     }
 }
 
@@ -188,110 +147,37 @@ fn implicit_midpoint_oscillator_f64() {
 
 // --- Linear problem (from common) ---
 
-#[test]
-fn implicit_midpoint_linear_f64() {
+#[rstest]
+#[case::midpoint(IMPLICIT_MIDPOINT)]
+#[case::cn(CRANK_NICOLSON)]
+#[case::radau3(RADAU_IIA_3)]
+#[case::radau5(RADAU_IIA_5)]
+#[case::gl4(GAUSS_LEGENDRE_4)]
+fn irk_linear_f64(#[case] method: ImplicitRungeKuttaMethod<f64>) {
     let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(IMPLICIT_MIDPOINT, 0.01)
+    let sol = FixedStepODESolver::new(method, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
     for (i, ref_traj) in reference.iter().enumerate() {
         let computed = sol.u.column(i).to_owned();
         let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(
-            res <= 0.02,
-            "Midpoint linear var {i}: residual {res} > 0.02"
-        );
+        assert!(res <= 0.02, "linear var {i}: residual {res} > 0.02");
     }
 }
 
-#[test]
-fn crank_nicolson_linear_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(CRANK_NICOLSON, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.02, "CN linear var {i}: residual {res} > 0.02");
-    }
-}
-
-#[test]
-fn radau_ii_3_linear_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(RADAU_IIA_3, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.02, "Radau3 linear var {i}: residual {res} > 0.02");
-    }
-}
-
-#[test]
-fn radau_ii_5_linear_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(RADAU_IIA_5, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.02, "Radau5 linear var {i}: residual {res} > 0.02");
-    }
-}
-
-#[test]
-fn gauss_legendre_4_linear_f64() {
-    let (prob, reference) = linear_problem::<f64>();
-    let sol = FixedStepODESolver::new(GAUSS_LEGENDRE_4, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.02, "GL4 linear var {i}: residual {res} > 0.02");
-    }
-}
-
-#[test]
-fn backward_euler_exp_decay() {
+#[rstest]
+#[case::be(BACKWARD_EULER, 0.01)]
+#[case::cn(CRANK_NICOLSON, 0.0001)]
+#[case::midpoint(IMPLICIT_MIDPOINT, 0.0001)]
+fn irk_exp_decay(#[case] method: ImplicitRungeKuttaMethod<f64>, #[case] tol: f64) {
     let (prob, u_exact) = exp_decay_problem();
-    let sol = FixedStepODESolver::new(BACKWARD_EULER, 0.01)
+    let sol = FixedStepODESolver::new(method, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
     let u_last = sol.u[[sol.t.len() - 1, 0]];
-    assert!((u_last - u_exact).abs() < 0.01);
-}
-
-#[test]
-fn crank_nicolson_exp_decay() {
-    let (prob, u_exact) = exp_decay_problem();
-    let sol = FixedStepODESolver::new(CRANK_NICOLSON, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u_last = sol.u[[sol.t.len() - 1, 0]];
-    assert!((u_last - u_exact).abs() < 0.0001);
-}
-
-#[test]
-fn implicit_midpoint_exp_decay() {
-    let (prob, u_exact) = exp_decay_problem();
-    let sol = FixedStepODESolver::new(IMPLICIT_MIDPOINT, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    let u_last = sol.u[[sol.t.len() - 1, 0]];
-    assert!((u_last - u_exact).abs() < 0.0001);
+    assert!((u_last - u_exact).abs() < tol);
 }
 
 // --- Newton convergence failure / Picard fallback ---
@@ -332,66 +218,15 @@ fn backward_euler_exp_decay_f32() {
     assert!((u_last - u_exact).abs() < 0.01, "BE f32: error too large");
 }
 
-#[test]
-fn implicit_midpoint_linear_f32() {
+#[rstest]
+#[case::midpoint(IMPLICIT_MIDPOINT)]
+#[case::cn(CRANK_NICOLSON)]
+#[case::radau3(RADAU_IIA_3)]
+#[case::radau5(RADAU_IIA_5)]
+#[case::gl4(GAUSS_LEGENDRE_4)]
+fn irk_linear_f32(#[case] method: ImplicitRungeKuttaMethod<f64>) {
     let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(IMPLICIT_MIDPOINT, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn crank_nicolson_linear_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(CRANK_NICOLSON, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn radau_ii_3_linear_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(RADAU_IIA_3, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn radau_ii_5_linear_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(RADAU_IIA_5, 0.01)
-        .unwrap()
-        .solve(&prob)
-        .unwrap();
-    for (i, ref_traj) in reference.iter().enumerate() {
-        let computed = sol.u.column(i).to_owned();
-        let res = residual(computed.as_slice().unwrap(), ref_traj).unwrap();
-        assert!(res <= 0.01);
-    }
-}
-
-#[test]
-fn gauss_legendre_4_linear_f32() {
-    let (prob, reference) = linear_problem::<f32>();
-    let sol = FixedStepODESolver::new(GAUSS_LEGENDRE_4, 0.01)
+    let sol = FixedStepODESolver::new(method, 0.01)
         .unwrap()
         .solve(&prob)
         .unwrap();
